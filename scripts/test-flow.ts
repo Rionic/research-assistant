@@ -15,7 +15,7 @@
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 import OpenAI from 'openai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import sgMail from '@sendgrid/mail';
 import { jsPDF } from 'jspdf';
 
@@ -188,16 +188,16 @@ async function testGemini() {
   logSection('Testing Google Gemini API');
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
     logInfo('Sending test prompt to Gemini...');
 
-    const result = await model.generateContent(
-      'What is artificial intelligence? Answer in one sentence.'
-    );
-    const response = await result.response;
-    const text = response.text();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      contents: 'What is artificial intelligence? Answer in one sentence.',
+    });
+
+    const text = response.text;
 
     logSuccess('Gemini API is working!');
     logInfo(`Response: ${text}`);
@@ -375,7 +375,7 @@ async function testFullFlow() {
     // 4. Run parallel research
     logInfo('4. Running parallel research (OpenAI + Gemini)...');
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
     const [openaiResult, geminiResult] = await Promise.all([
       openai.chat.completions.create({
@@ -392,9 +392,10 @@ async function testFullFlow() {
         ],
         max_tokens: 300,
       }),
-      genAI.getGenerativeModel({ model: 'gemini-pro' })
-        .generateContent(refinedPrompt)
-        .then(r => r.response.text()),
+      ai.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: refinedPrompt,
+      }).then(r => r.text),
     ]);
 
     logSuccess('Both research tasks completed!');
