@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:flow": "tsx scripts/test-flow.ts"
+    "test:flow": "npx tsx scripts/test-flow.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
