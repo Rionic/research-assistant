@@ -74,7 +74,7 @@ async function testEnvironmentVariables() {
 
   const requiredVars = [
     'OPENAI_API_KEY',
-    'GOOGLE_GEMINI_API_KEY',
+    'GEMINI_API_KEY',
     'SENDGRID_API_KEY',
     'SENDGRID_FROM_EMAIL',
   ];
@@ -188,7 +188,7 @@ async function testGemini() {
   logSection('Testing Google Gemini API');
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     logInfo('Sending test prompt to Gemini...');
@@ -208,7 +208,7 @@ async function testGemini() {
     logError(`Gemini API test failed: ${error.message}`);
 
     if (error.message?.includes('API_KEY_INVALID')) {
-      logWarning('Check your GOOGLE_GEMINI_API_KEY in .env.local');
+      logWarning('Check your GEMINI_API_KEY in .env.local');
       logInfo('Get your key from: https://makersuite.google.com/app/apikey');
     }
 
@@ -375,7 +375,7 @@ async function testFullFlow() {
     // 4. Run parallel research
     logInfo('4. Running parallel research (OpenAI + Gemini)...');
 
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
     const [openaiResult, geminiResult] = await Promise.all([
       openai.chat.completions.create({
