@@ -197,7 +197,7 @@ async function testGemini() {
       contents: 'What is artificial intelligence? Answer in one sentence.',
     });
 
-    const text = response.text;
+    const text = response.text || 'No response';
 
     logSuccess('Gemini API is working!');
     logInfo(`Response: ${text}`);
@@ -395,12 +395,12 @@ async function testFullFlow() {
       ai.models.generateContent({
         model: 'gemini-2.0-flash-exp',
         contents: refinedPrompt,
-      }).then(r => r.text),
+      }).then(r => r.text || ''),
     ]);
 
     logSuccess('Both research tasks completed!');
     logInfo(`OpenAI result length: ${openaiResult.choices[0].message.content?.length || 0} chars`);
-    logInfo(`Gemini result length: ${geminiResult.length} chars`);
+    logInfo(`Gemini result length: ${geminiResult?.length || 0} chars`);
 
     // 5. Generate PDF
     logInfo('5. Generating PDF report...');

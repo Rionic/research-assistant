@@ -162,7 +162,7 @@ async function performGeminiResearch(prompt: string): Promise<string> {
     model: 'gemini-2.0-flash-exp',
     contents: prompt,
   });
-  return response.text;
+  return response.text || '';
 }
 
 async function generateAndEmailReport(session: ResearchSession) {
