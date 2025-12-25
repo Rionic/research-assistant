@@ -189,7 +189,7 @@ async function testGemini() {
 
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     logInfo('Sending test prompt to Gemini...');
 
@@ -392,7 +392,7 @@ async function testFullFlow() {
         ],
         max_tokens: 300,
       }),
-      genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' })
+      genAI.getGenerativeModel({ model: 'gemini-pro' })
         .generateContent(refinedPrompt)
         .then(r => r.response.text()),
     ]);
