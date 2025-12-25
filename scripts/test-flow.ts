@@ -108,11 +108,11 @@ async function testOpenAI() {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    logInfo('Testing basic GPT-4 model first...');
+    logInfo('Testing basic GPT-4o-mini model first...');
 
     // First test with a known working model
     const basicTest = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'user', content: 'Say "API test successful" and nothing else.' }
       ],
@@ -189,7 +189,7 @@ async function testGemini() {
 
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     logInfo('Sending test prompt to Gemini...');
 
@@ -350,7 +350,7 @@ async function testFullFlow() {
 
     logInfo('2. Requesting refinement questions from OpenAI...');
     const refinementResponse = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -379,7 +379,7 @@ async function testFullFlow() {
 
     const [openaiResult, geminiResult] = await Promise.all([
       openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -392,7 +392,7 @@ async function testFullFlow() {
         ],
         max_tokens: 300,
       }),
-      genAI.getGenerativeModel({ model: 'gemini-pro' })
+      genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
         .generateContent(refinedPrompt)
         .then(r => r.response.text()),
     ]);

@@ -36,11 +36,10 @@ export async function POST(request: NextRequest) {
     const sessionRef = adminDb.collection('research_sessions').doc();
     const sessionId = sessionRef.id;
 
-    // Step 1: Call OpenAI Deep Research to get refinement questions
-    // NOTE: The Deep Research API might work differently - this is a placeholder
-    // You may need to adjust based on actual API behavior
+    // Step 1: Call OpenAI to get refinement questions
+    // TODO: Upgrade to o3-deep-research when available
     const completion = await openai.chat.completions.create({
-      model: 'o3-deep-research',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',

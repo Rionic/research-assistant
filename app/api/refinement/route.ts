@@ -141,7 +141,7 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
 
 async function performOpenAIResearch(prompt: string): Promise<string> {
   const completion = await openai.chat.completions.create({
-    model: 'o3-deep-research',
+    model: 'gpt-4o-mini', // TODO: Upgrade to o3-deep-research when available
     messages: [
       {
         role: 'system',
@@ -158,7 +158,7 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
 }
 
 async function performGeminiResearch(prompt: string): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   const result = await model.generateContent(prompt);
   const response = await result.response;
   return response.text();
