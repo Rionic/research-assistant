@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { ResearchSession, SubmitRefinementRequest, SubmitRefinementResponse } from '@/types';
 import OpenAI from 'openai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export async function POST(request: NextRequest) {
   try {
@@ -141,7 +141,7 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
 
 async function performOpenAIResearch(prompt: string): Promise<string> {
   const completion = await openai.chat.completions.create({
-    model: 'o3-deep-research',
+    model: 'gpt-4o-mini', // TODO: Upgrade to o3-deep-research when available
     messages: [
       {
         role: 'system',
@@ -158,10 +158,11 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
 }
 
 async function performGeminiResearch(prompt: string): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  return response.text();
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash-exp',
+    contents: prompt,
+  });
+  return response.text || '';
 }
 
 async function generateAndEmailReport(session: ResearchSession) {

@@ -21,7 +21,7 @@ Before running tests, ensure you have:
 
 2. **Filled in all API keys** in `.env.local`:
    - `OPENAI_API_KEY` - From https://platform.openai.com/api-keys
-   - `GOOGLE_GEMINI_API_KEY` - From https://makersuite.google.com/app/apikey
+   - `GEMINI_API_KEY` - From https://makersuite.google.com/app/apikey
    - `SENDGRID_API_KEY` - From https://app.sendgrid.com/settings/api_keys
    - `SENDGRID_FROM_EMAIL` - Your verified SendGrid sender email
    - Firebase credentials (from Firebase Console)
@@ -79,7 +79,7 @@ Testing all backend components...
 Testing Environment Variables
 ============================================================
 ✅ OPENAI_API_KEY is set
-✅ GOOGLE_GEMINI_API_KEY is set
+✅ GEMINI_API_KEY is set
 ✅ SENDGRID_API_KEY is set
 ✅ SENDGRID_FROM_EMAIL is set
 

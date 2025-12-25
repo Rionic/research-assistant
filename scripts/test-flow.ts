@@ -15,7 +15,7 @@
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 import OpenAI from 'openai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import sgMail from '@sendgrid/mail';
 import { jsPDF } from 'jspdf';
 
@@ -74,7 +74,7 @@ async function testEnvironmentVariables() {
 
   const requiredVars = [
     'OPENAI_API_KEY',
-    'GOOGLE_GEMINI_API_KEY',
+    'GEMINI_API_KEY',
     'SENDGRID_API_KEY',
     'SENDGRID_FROM_EMAIL',
   ];
@@ -108,11 +108,11 @@ async function testOpenAI() {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    logInfo('Testing basic GPT-4 model first...');
+    logInfo('Testing basic GPT-4o-mini model first...');
 
     // First test with a known working model
     const basicTest = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'user', content: 'Say "API test successful" and nothing else.' }
       ],
@@ -188,16 +188,16 @@ async function testGemini() {
   logSection('Testing Google Gemini API');
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
     logInfo('Sending test prompt to Gemini...');
 
-    const result = await model.generateContent(
-      'What is artificial intelligence? Answer in one sentence.'
-    );
-    const response = await result.response;
-    const text = response.text();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      contents: 'What is artificial intelligence? Answer in one sentence.',
+    });
+
+    const text = response.text || 'No response';
 
     logSuccess('Gemini API is working!');
     logInfo(`Response: ${text}`);
@@ -208,7 +208,7 @@ async function testGemini() {
     logError(`Gemini API test failed: ${error.message}`);
 
     if (error.message?.includes('API_KEY_INVALID')) {
-      logWarning('Check your GOOGLE_GEMINI_API_KEY in .env.local');
+      logWarning('Check your GEMINI_API_KEY in .env.local');
       logInfo('Get your key from: https://makersuite.google.com/app/apikey');
     }
 
@@ -350,7 +350,7 @@ async function testFullFlow() {
 
     logInfo('2. Requesting refinement questions from OpenAI...');
     const refinementResponse = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -375,11 +375,11 @@ async function testFullFlow() {
     // 4. Run parallel research
     logInfo('4. Running parallel research (OpenAI + Gemini)...');
 
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
     const [openaiResult, geminiResult] = await Promise.all([
       openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -392,14 +392,15 @@ async function testFullFlow() {
         ],
         max_tokens: 300,
       }),
-      genAI.getGenerativeModel({ model: 'gemini-pro' })
-        .generateContent(refinedPrompt)
-        .then(r => r.response.text()),
+      ai.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: refinedPrompt,
+      }).then(r => r.text || ''),
     ]);
 
     logSuccess('Both research tasks completed!');
     logInfo(`OpenAI result length: ${openaiResult.choices[0].message.content?.length || 0} chars`);
-    logInfo(`Gemini result length: ${geminiResult.length} chars`);
+    logInfo(`Gemini result length: ${geminiResult?.length || 0} chars`);
 
     // 5. Generate PDF
     logInfo('5. Generating PDF report...');
