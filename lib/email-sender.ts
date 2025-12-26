@@ -16,8 +16,12 @@ export async function sendResearchReport(session: ResearchSession): Promise<void
     throw new Error('SendGrid from email is not configured');
   }
 
+  console.log('📧 Attempting to send email to:', session.userEmail);
+  console.log('📧 From:', process.env.SENDGRID_FROM_EMAIL);
+
   // Generate PDF
   const pdfBuffer = await generateResearchPDF(session);
+  console.log('📄 PDF generated, size:', pdfBuffer.length, 'bytes');
 
   // Create email summary
   const summary = generateEmailSummary(session);
@@ -43,7 +47,13 @@ export async function sendResearchReport(session: ResearchSession): Promise<void
   };
 
   // Send email
-  await sgMail.send(msg);
+  try {
+    const result = await sgMail.send(msg);
+    console.log('✅ Email sent successfully!', result[0].statusCode);
+  } catch (error) {
+    console.error('❌ SendGrid error:', error);
+    throw error;
+  }
 }
 
 function generateEmailSummary(session: ResearchSession): string {

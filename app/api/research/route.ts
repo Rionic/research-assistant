@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { ResearchSession, StartResearchRequest, StartResearchResponse } from '@/types';
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { mockGetRefinementQuestions } from '@/lib/mockApi';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,35 +32,39 @@ export async function POST(request: NextRequest) {
     const sessionRef = adminDb.collection('research_sessions').doc();
     const sessionId = sessionRef.id;
 
-    // Step 1: Call OpenAI to get refinement questions
-    // TODO: Upgrade to o3-deep-research when available
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a research assistant. Before conducting research, ask 2-3 clarifying questions to refine the research scope and objectives.',
-        },
-        {
-          role: 'user',
-          content: `I want to research: ${prompt}\n\nWhat clarifying questions do you have to better understand my research needs?`,
-        },
-      ],
-    });
+    // Step 1: Call OpenAI (mock) to get refinement questions
+    // TODO: Upgrade to real o3-deep-research when credits available
+    const refinementQuestions = await mockGetRefinementQuestions(prompt);
 
-    const refinementQuestionsText = completion.choices[0].message.content || '';
+    // If no refinement questions, trigger immediate research
+    if (refinementQuestions.length === 0) {
+      const session: ResearchSession = {
+        id: sessionId,
+        userId,
+        userEmail,
+        initialPrompt: prompt,
+        refinedPrompt: prompt, // No refinement, use original prompt
+        refinementQuestions: [],
+        status: 'processing',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-    // Parse questions (simple approach - split by newlines and filter)
-    const questionLines = refinementQuestionsText
-      .split('\n')
-      .filter(line => line.trim().length > 0 && /^\d+[.)]\s+/.test(line.trim()));
+      await sessionRef.set(session);
 
-    const refinementQuestions = questionLines.map((line, index) => ({
-      id: `q${index + 1}`,
-      question: line.replace(/^\d+[.)]\s+/, '').trim(),
-    }));
+      // Trigger background research with original prompt
+      performResearch(sessionId, prompt);
 
-    // Create initial session document
+      const response: StartResearchResponse = {
+        sessionId,
+        status: 'processing',
+        refinementQuestions: [],
+      };
+
+      return NextResponse.json(response);
+    }
+
+    // Create initial session document with refinement questions
     const session: ResearchSession = {
       id: sessionId,
       userId,
@@ -92,4 +92,50 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Background research function (same as in refinement route)
+async function performResearch(sessionId: string, refinedPrompt: string) {
+  const { mockParallelResearch } = await import('@/lib/mockApi');
+  const sessionRef = adminDb.collection('research_sessions').doc(sessionId);
+
+  try {
+    // Run both research tasks in parallel
+    const { openaiResult, geminiResult } = await mockParallelResearch(refinedPrompt);
+
+    // Update session with results
+    await sessionRef.update({
+      openaiResult,
+      geminiResult,
+      status: 'completed',
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Get updated session data
+    const sessionDoc = await sessionRef.get();
+    const session = sessionDoc.data() as ResearchSession;
+
+    // Generate and send PDF report
+    await generateAndEmailReport(session);
+
+    // Update status to email_sent
+    await sessionRef.update({
+      status: 'email_sent',
+      emailSentAt: new Date(),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Error performing research:', error);
+    await sessionRef.update({
+      status: 'failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      updatedAt: new Date(),
+    });
+  }
+}
+
+async function generateAndEmailReport(session: ResearchSession) {
+  const { sendResearchReport } = await import('@/lib/email-sender');
+  await sendResearchReport(session);
 }
