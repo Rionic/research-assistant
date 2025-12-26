@@ -172,7 +172,7 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="E.g., Latest developments in quantum computing, Impact of AI on healthcare, Sustainable energy solutions..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 placeholder:text-gray-400"
                   rows={4}
                   disabled={isLoading}
                   required
@@ -247,7 +247,7 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
                     value={currentAnswer}
                     onChange={(e) => setCurrentAnswer(e.target.value)}
                     placeholder="Provide details to help refine your research..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 placeholder:text-gray-400"
                     rows={3}
                     required
                   />
