@@ -21,6 +21,13 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
+  // Cleanup listener on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup happens automatically when modal closes
+    };
+  }, []);
+
   if (!isOpen) return null;
 
   const handleSubmitPrompt = async (e: React.FormEvent) => {
@@ -137,13 +144,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
     // Store unsubscribe function for cleanup
     return unsubscribe;
   };
-
-  // Cleanup listener on unmount
-  useEffect(() => {
-    return () => {
-      // Cleanup happens automatically when modal closes
-    };
-  }, []);
 
   const resetModal = () => {
     setStep('prompt');
