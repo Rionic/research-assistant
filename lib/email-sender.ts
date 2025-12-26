@@ -8,21 +8,20 @@ if (process.env.SENDGRID_API_KEY) {
 }
 
 export async function sendResearchReport(session: ResearchSession): Promise<void> {
-  // Mock email sending if SendGrid not configured
-  if (!process.env.SENDGRID_API_KEY || process.env.SENDGRID_API_KEY.includes('xxx')) {
-    console.log('📧 [MOCK] Email would be sent to:', session.userEmail);
-    console.log('📧 [MOCK] Subject: Your Research Report:', session.initialPrompt.substring(0, 50));
-    console.log('📧 [MOCK] PDF would be attached');
-    console.log('📧 [MOCK] SendGrid not configured - email skipped (this is expected for demo)');
-    return; // Skip actual email sending
+  if (!process.env.SENDGRID_API_KEY) {
+    throw new Error('SendGrid API key is not configured');
   }
 
   if (!process.env.SENDGRID_FROM_EMAIL) {
     throw new Error('SendGrid from email is not configured');
   }
 
+  console.log('📧 Attempting to send email to:', session.userEmail);
+  console.log('📧 From:', process.env.SENDGRID_FROM_EMAIL);
+
   // Generate PDF
   const pdfBuffer = await generateResearchPDF(session);
+  console.log('📄 PDF generated, size:', pdfBuffer.length, 'bytes');
 
   // Create email summary
   const summary = generateEmailSummary(session);
@@ -48,7 +47,13 @@ export async function sendResearchReport(session: ResearchSession): Promise<void
   };
 
   // Send email
-  await sgMail.send(msg);
+  try {
+    const result = await sgMail.send(msg);
+    console.log('✅ Email sent successfully!', result[0].statusCode);
+  } catch (error) {
+    console.error('❌ SendGrid error:', error);
+    throw error;
+  }
 }
 
 function generateEmailSummary(session: ResearchSession): string {
