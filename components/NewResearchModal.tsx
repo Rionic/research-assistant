@@ -91,7 +91,7 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
         userId: user.uid,
         userEmail: user.email || '',
         initialPrompt: prompt,
-        refinedPrompt: questions.length > 0 ? finalPrompt : undefined,
+        refinedPrompt: finalPrompt, // Always save the final prompt (refined or original)
         refinementQuestions: questions,
         status: 'processing',
         createdAt: new Date(),
