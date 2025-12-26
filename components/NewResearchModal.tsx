@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { ResearchSession, RefinementQuestion } from '@/types';
-import { mockGetRefinementQuestions, mockParallelResearch } from '@/lib/mockApi';
 
 interface NewResearchModalProps {
   isOpen: boolean;
@@ -31,97 +30,120 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
     setIsLoading(true);
 
     try {
-      // Mock: Get refinement questions from "OpenAI"
-      const questions = await mockGetRefinementQuestions(prompt);
+      // Call backend API to start research and get refinement questions
+      const response = await fetch('/api/research', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.uid,
+          'x-user-email': user.email || '',
+        },
+        body: JSON.stringify({ prompt }),
+      });
 
-      if (questions.length > 0) {
+      if (!response.ok) {
+        throw new Error('Failed to start research');
+      }
+
+      const data = await response.json();
+      setSessionId(data.sessionId);
+
+      if (data.refinementQuestions && data.refinementQuestions.length > 0) {
         // Has refinement questions
-        setRefinementQuestions(questions);
+        setRefinementQuestions(data.refinementQuestions);
         setStep('refinement');
+        setIsLoading(false);
       } else {
-        // No refinement questions, go straight to processing
-        await startResearch(prompt);
+        // No refinement questions, backend is processing
+        setStep('processing');
+        // Listen for updates from Firestore
+        watchSession(data.sessionId);
       }
     } catch (error) {
       console.error('Error getting refinement questions:', error);
       alert('Failed to start research. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
 
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentAnswer.trim()) return;
-
-    // Save answer to current question
-    const updatedQuestions = [...refinementQuestions];
-    updatedQuestions[currentQuestionIndex].answer = currentAnswer;
-    setRefinementQuestions(updatedQuestions);
-    setCurrentAnswer('');
-
-    // Check if more questions remain
-    if (currentQuestionIndex < refinementQuestions.length - 1) {
-      // Move to next question
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      // All questions answered, start research
-      const refinedPrompt = buildRefinedPrompt(prompt, updatedQuestions);
-      await startResearch(refinedPrompt, updatedQuestions);
-    }
-  };
-
-  const buildRefinedPrompt = (initialPrompt: string, questions: RefinementQuestion[]): string => {
-    const qaText = questions
-      .map(q => `Q: ${q.question}\nA: ${q.answer}`)
-      .join('\n\n');
-
-    return `${initialPrompt}\n\nAdditional context:\n${qaText}`;
-  };
-
-  const startResearch = async (finalPrompt: string, questions: RefinementQuestion[] = []) => {
-    if (!user) return;
-
-    setIsLoading(true);
-    setStep('processing');
+    if (!currentAnswer.trim() || !sessionId || !user) return;
 
     try {
-      // Create session in Firestore
-      const sessionData: Omit<ResearchSession, 'id'> = {
-        userId: user.uid,
-        userEmail: user.email || '',
-        initialPrompt: prompt,
-        refinedPrompt: finalPrompt, // Always save the final prompt (refined or original)
-        refinementQuestions: questions,
-        status: 'processing',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const docRef = await addDoc(collection(db, 'research_sessions'), sessionData);
-      setSessionId(docRef.id);
-
-      // Simulate parallel research
-      const { openaiResult, geminiResult } = await mockParallelResearch(finalPrompt);
-
-      // Update session with results
-      await updateDoc(doc(db, 'research_sessions', docRef.id), {
-        openaiResult,
-        geminiResult,
-        status: 'completed',
-        completedAt: new Date(),
-        updatedAt: new Date(),
+      // Submit answer to backend
+      const response = await fetch('/api/refinement', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          questionId: refinementQuestions[currentQuestionIndex].id,
+          answer: currentAnswer,
+        }),
       });
 
-      // Close modal and refresh dashboard
-      resetModal();
-      onClose();
+      if (!response.ok) {
+        throw new Error('Failed to submit answer');
+      }
+
+      const data = await response.json();
+
+      // Save answer locally
+      const updatedQuestions = [...refinementQuestions];
+      updatedQuestions[currentQuestionIndex].answer = currentAnswer;
+      setRefinementQuestions(updatedQuestions);
+      setCurrentAnswer('');
+
+      if (data.status === 'processing') {
+        // All questions answered, backend is processing
+        setStep('processing');
+        // Listen for updates from Firestore
+        watchSession(sessionId);
+      } else if (data.nextQuestion) {
+        // Move to next question
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      }
     } catch (error) {
-      console.error('Error conducting research:', error);
-      alert('Failed to complete research. Please try again.');
-      setIsLoading(false);
+      console.error('Error submitting answer:', error);
+      alert('Failed to submit answer. Please try again.');
     }
   };
+
+  // Watch Firestore session for real-time updates
+  const watchSession = (sessionId: string) => {
+    const sessionRef = doc(db, 'research_sessions', sessionId);
+
+    const unsubscribe = onSnapshot(sessionRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const session = docSnapshot.data() as ResearchSession;
+
+        if (session.status === 'completed' || session.status === 'email_sent') {
+          // Research complete! Close modal
+          unsubscribe();
+          resetModal();
+          onClose();
+        } else if (session.status === 'failed') {
+          // Error occurred
+          unsubscribe();
+          alert(`Research failed: ${session.error || 'Unknown error'}`);
+          resetModal();
+          onClose();
+        }
+      }
+    });
+
+    // Store unsubscribe function for cleanup
+    return unsubscribe;
+  };
+
+  // Cleanup listener on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup happens automatically when modal closes
+    };
+  }, []);
 
   const resetModal = () => {
     setStep('prompt');
