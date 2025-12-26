@@ -8,8 +8,13 @@ if (process.env.SENDGRID_API_KEY) {
 }
 
 export async function sendResearchReport(session: ResearchSession): Promise<void> {
-  if (!process.env.SENDGRID_API_KEY) {
-    throw new Error('SendGrid API key is not configured');
+  // Mock email sending if SendGrid not configured
+  if (!process.env.SENDGRID_API_KEY || process.env.SENDGRID_API_KEY.includes('xxx')) {
+    console.log('📧 [MOCK] Email would be sent to:', session.userEmail);
+    console.log('📧 [MOCK] Subject: Your Research Report:', session.initialPrompt.substring(0, 50));
+    console.log('📧 [MOCK] PDF would be attached');
+    console.log('📧 [MOCK] SendGrid not configured - email skipped (this is expected for demo)');
+    return; // Skip actual email sending
   }
 
   if (!process.env.SENDGRID_FROM_EMAIL) {
