@@ -71,7 +71,14 @@ function generateEmailSummary(session: ResearchSession): string {
     summary += '\n';
   }
 
-  summary += `Research completed on: ${new Date(session.completedAt || session.updatedAt).toLocaleString()}\n\n`;
+  // Fix Firestore timestamp conversion
+  const completedDate = session.completedAt
+    ? (session.completedAt as any)._seconds
+      ? new Date((session.completedAt as any)._seconds * 1000)
+      : new Date(session.completedAt)
+    : new Date(session.updatedAt);
+
+  summary += `Research completed on: ${completedDate.toLocaleString()}\n\n`;
 
   // Add key insights preview
   summary += `Key Insights:\n`;
@@ -85,6 +92,13 @@ function generateEmailSummary(session: ResearchSession): string {
 }
 
 function generateEmailHTML(session: ResearchSession, textSummary: string): string {
+  // Fix Firestore timestamp conversion
+  const completedDate = session.completedAt
+    ? (session.completedAt as any)._seconds
+      ? new Date((session.completedAt as any)._seconds * 1000)
+      : new Date(session.completedAt)
+    : new Date(session.updatedAt);
+
   return `
 <!DOCTYPE html>
 <html>
@@ -189,7 +203,7 @@ function generateEmailHTML(session: ResearchSession, textSummary: string): strin
 
     <div style="margin-top: 20px;">
       <span class="badge">✓ Completed</span>
-      <p><strong>Completed:</strong> ${new Date(session.completedAt || session.updatedAt).toLocaleString()}</p>
+      <p><strong>Completed:</strong> ${completedDate.toLocaleString()}</p>
     </div>
 
     <div style="background: white; padding: 15px; border-radius: 4px; margin-top: 15px;">

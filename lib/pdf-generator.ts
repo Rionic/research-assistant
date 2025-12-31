@@ -32,6 +32,47 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     yPosition += 5; // Add spacing after text block
   };
 
+  // Helper function to parse and render markdown text
+  const addMarkdownText = (markdownText: string) => {
+    const lines = markdownText.split('\n');
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      if (!trimmed) {
+        yPosition += 3; // Empty line spacing
+        continue;
+      }
+
+      // Handle headers (###, ##, #)
+      if (trimmed.startsWith('###')) {
+        addText(trimmed.replace(/^###\s*/, ''), 12, true);
+      } else if (trimmed.startsWith('##')) {
+        addText(trimmed.replace(/^##\s*/, ''), 13, true);
+      } else if (trimmed.startsWith('#')) {
+        addText(trimmed.replace(/^#\s*/, ''), 14, true);
+      }
+      // Handle bold text **text**
+      else if (trimmed.includes('**')) {
+        const cleanText = trimmed.replace(/\*\*/g, '');
+        const isBold = trimmed.startsWith('**') || trimmed.match(/^\d+\.\s*\*\*/);
+        addText(cleanText, 10, isBold);
+      }
+      // Handle list items (-, *, •)
+      else if (trimmed.match(/^[-*•]\s/)) {
+        addText('  • ' + trimmed.replace(/^[-*•]\s*/, ''), 10);
+      }
+      // Handle numbered lists
+      else if (trimmed.match(/^\d+\.\s/)) {
+        addText(trimmed, 10);
+      }
+      // Regular text
+      else {
+        addText(trimmed, 10);
+      }
+    }
+  };
+
   // Header
   doc.setFillColor(41, 128, 185);
   doc.rect(0, 0, pageWidth, 40, 'F');
@@ -51,7 +92,12 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     addText(`Refined Prompt: ${session.refinedPrompt}`, 10);
   }
 
-  addText(`Date: ${new Date(session.createdAt).toLocaleString()}`, 10);
+  // Fix Firestore timestamp conversion
+  const createdDate = (session.createdAt as any)._seconds
+    ? new Date((session.createdAt as any)._seconds * 1000)
+    : new Date(session.createdAt);
+
+  addText(`Date: ${createdDate.toLocaleString()}`, 10);
   addText(`Status: ${session.status.toUpperCase()}`, 10);
 
   yPosition += 10;
@@ -76,7 +122,7 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     doc.setDrawColor(41, 128, 185);
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 5;
-    addText(session.openaiResult, 10);
+    addMarkdownText(session.openaiResult);
     yPosition += 10;
   }
 
@@ -86,7 +132,7 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     doc.setDrawColor(219, 68, 55);
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 5;
-    addText(session.geminiResult, 10);
+    addMarkdownText(session.geminiResult);
   }
 
   // Footer on each page
