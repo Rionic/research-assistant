@@ -144,7 +144,7 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
 // Perform OpenAI deep research
 async function performOpenAIResearch(prompt: string): Promise<string> {
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini', // Using gpt-4o-mini (o3-deep-research not yet available)
+    model: 'gpt-3.5-turbo', // Using gpt-3.5-turbo (most widely available)
     messages: [
       {
         role: 'system',
@@ -165,7 +165,7 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
 // Perform Gemini research
 async function performGeminiResearch(prompt: string): Promise<string> {
   const response = await geminiAI.models.generateContent({
-    model: 'gemini-pro',
+    model: 'gemini-1.5-flash', // Using gemini-1.5-flash (commonly available)
     contents: prompt,
   });
 
