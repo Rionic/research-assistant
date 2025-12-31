@@ -35,42 +35,101 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
   // Helper function to parse and render markdown text
   const addMarkdownText = (markdownText: string) => {
     const lines = markdownText.split('\n');
+    let inTable = false;
+    let tableRows: string[][] = [];
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const trimmed = line.trim();
 
       if (!trimmed) {
+        // If we were in a table, render it now
+        if (inTable && tableRows.length > 0) {
+          renderTable(tableRows);
+          tableRows = [];
+          inTable = false;
+        }
         yPosition += 3; // Empty line spacing
         continue;
       }
 
+      // Detect table rows (contains |)
+      if (trimmed.includes('|') && !trimmed.startsWith('#')) {
+        // Skip separator rows (----)
+        if (trimmed.match(/^[|\s:-]+$/)) {
+          continue;
+        }
+
+        inTable = true;
+        const cells = trimmed
+          .split('|')
+          .map(cell => cell.trim())
+          .filter(cell => cell.length > 0);
+        tableRows.push(cells);
+        continue;
+      }
+
+      // If we were in a table but this line isn't, render the table
+      if (inTable && tableRows.length > 0) {
+        renderTable(tableRows);
+        tableRows = [];
+        inTable = false;
+      }
+
       // Handle headers (###, ##, #)
       if (trimmed.startsWith('###')) {
-        addText(trimmed.replace(/^###\s*/, ''), 12, true);
+        addText(cleanMarkdown(trimmed.replace(/^###\s*/, '')), 12, true);
       } else if (trimmed.startsWith('##')) {
-        addText(trimmed.replace(/^##\s*/, ''), 13, true);
+        addText(cleanMarkdown(trimmed.replace(/^##\s*/, '')), 13, true);
       } else if (trimmed.startsWith('#')) {
-        addText(trimmed.replace(/^#\s*/, ''), 14, true);
-      }
-      // Handle bold text **text**
-      else if (trimmed.includes('**')) {
-        const cleanText = trimmed.replace(/\*\*/g, '');
-        const isBold = trimmed.startsWith('**') || trimmed.match(/^\d+\.\s*\*\*/);
-        addText(cleanText, 10, isBold);
+        addText(cleanMarkdown(trimmed.replace(/^#\s*/, '')), 14, true);
       }
       // Handle list items (-, *, •)
       else if (trimmed.match(/^[-*•]\s/)) {
-        addText('  • ' + trimmed.replace(/^[-*•]\s*/, ''), 10);
+        addText('  • ' + cleanMarkdown(trimmed.replace(/^[-*•]\s*/, '')), 10);
       }
       // Handle numbered lists
       else if (trimmed.match(/^\d+\.\s/)) {
-        addText(trimmed, 10);
+        addText(cleanMarkdown(trimmed), 10);
+      }
+      // Check if line starts with bold
+      else if (trimmed.match(/^\*\*[^*]+\*\*/)) {
+        addText(cleanMarkdown(trimmed), 10, true);
       }
       // Regular text
       else {
-        addText(trimmed, 10);
+        addText(cleanMarkdown(trimmed), 10);
       }
     }
+
+    // Render any remaining table
+    if (inTable && tableRows.length > 0) {
+      renderTable(tableRows);
+    }
+  };
+
+  // Helper to clean markdown formatting
+  const cleanMarkdown = (text: string): string => {
+    // Remove bold markers
+    return text.replace(/\*\*/g, '');
+  };
+
+  // Helper to render tables as simple text
+  const renderTable = (rows: string[][]) => {
+    if (rows.length === 0) return;
+
+    // First row is header
+    if (rows[0]) {
+      addText(rows[0].join(' | '), 10, true);
+      yPosition += 2;
+    }
+
+    // Remaining rows
+    for (let i = 1; i < rows.length; i++) {
+      addText(rows[i].join(' | '), 9);
+    }
+
+    yPosition += 3;
   };
 
   // Header
