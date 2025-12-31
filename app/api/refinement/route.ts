@@ -168,7 +168,7 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
 async function performGeminiResearch(prompt: string): Promise<string> {
   console.log('🔮 Starting Gemini research...');
   const response = await geminiAI.models.generateContent({
-    model: 'gemini-1.5-flash-latest',
+    model: 'gemini-flash-latest',
     contents: prompt,
   });
 
