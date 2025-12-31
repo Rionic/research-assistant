@@ -106,8 +106,10 @@ export async function POST(request: NextRequest) {
 async function getRefinementQuestions(prompt: string) {
   try {
     console.log('🔍 Attempting to get refinement questions from OpenAI...');
+
+    // Try gpt-3.5-turbo-instruct first (often more accessible)
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-3.5-turbo-instruct',
       messages: [
         {
           role: 'system',
@@ -145,6 +147,19 @@ async function getRefinementQuestions(prompt: string) {
       type: error?.type,
       message: error?.message
     });
+
+    // Try to list available models to help debug
+    try {
+      console.log('🔍 Attempting to list available OpenAI models...');
+      const models = await openai.models.list();
+      const chatModels = models.data
+        .filter((m: any) => m.id.includes('gpt') || m.id.includes('turbo'))
+        .map((m: any) => m.id);
+      console.log('📋 Available chat models:', chatModels);
+    } catch (listError) {
+      console.error('Could not list models:', listError);
+    }
+
     return []; // If error, proceed without refinement
   }
 }
@@ -196,7 +211,7 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
 async function performOpenAIResearch(prompt: string): Promise<string> {
   console.log('🤖 Starting OpenAI research...');
   const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo',
+    model: 'gpt-3.5-turbo-instruct',
     messages: [
       {
         role: 'system',
