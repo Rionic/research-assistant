@@ -145,7 +145,7 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
 async function performOpenAIResearch(prompt: string): Promise<string> {
   console.log('🤖 Starting OpenAI research...');
   const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo-instruct',
+    model: 'gpt-4o',
     messages: [
       {
         role: 'system',

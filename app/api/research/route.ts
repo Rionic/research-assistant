@@ -107,9 +107,8 @@ async function getRefinementQuestions(prompt: string) {
   try {
     console.log('🔍 Attempting to get refinement questions from OpenAI...');
 
-    // Try gpt-3.5-turbo-instruct first (often more accessible)
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo-instruct',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',
@@ -211,7 +210,7 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
 async function performOpenAIResearch(prompt: string): Promise<string> {
   console.log('🤖 Starting OpenAI research...');
   const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo-instruct',
+    model: 'gpt-4o',
     messages: [
       {
         role: 'system',
