@@ -143,8 +143,9 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
 
 // Perform OpenAI deep research
 async function performOpenAIResearch(prompt: string): Promise<string> {
+  console.log('🤖 Starting OpenAI research...');
   const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo', // Using gpt-3.5-turbo (most widely available)
+    model: 'gpt-3.5-turbo',
     messages: [
       {
         role: 'system',
@@ -159,16 +160,19 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
     max_tokens: 3000,
   });
 
+  console.log('✅ OpenAI research completed');
   return completion.choices[0].message.content || '';
 }
 
 // Perform Gemini research
 async function performGeminiResearch(prompt: string): Promise<string> {
+  console.log('🔮 Starting Gemini research...');
   const response = await geminiAI.models.generateContent({
-    model: 'gemini-1.5-flash', // Using gemini-1.5-flash (commonly available)
+    model: 'gemini-1.5-flash-latest',
     contents: prompt,
   });
 
+  console.log('✅ Gemini research completed');
   return response.text || '';
 }
 
