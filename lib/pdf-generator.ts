@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { ResearchSession } from '@/types';
+import { marked } from 'marked';
 
 export async function generateResearchPDF(session: ResearchSession): Promise<Buffer> {
   const doc = new jsPDF({
@@ -32,104 +33,107 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     yPosition += 5; // Add spacing after text block
   };
 
-  // Helper function to parse and render markdown text
+  // Helper function to parse and render markdown text using marked
   const addMarkdownText = (markdownText: string) => {
-    const lines = markdownText.split('\n');
-    let inTable = false;
-    let tableRows: string[][] = [];
+    const tokens = marked.lexer(markdownText);
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const trimmed = line.trim();
-
-      if (!trimmed) {
-        // If we were in a table, render it now
-        if (inTable && tableRows.length > 0) {
-          renderTable(tableRows);
-          tableRows = [];
-          inTable = false;
-        }
-        yPosition += 3; // Empty line spacing
-        continue;
-      }
-
-      // Detect table rows (contains |)
-      if (trimmed.includes('|') && !trimmed.startsWith('#')) {
-        // Skip separator rows (----)
-        if (trimmed.match(/^[|\s:-]+$/)) {
-          continue;
-        }
-
-        inTable = true;
-        const cells = trimmed
-          .split('|')
-          .map(cell => cell.trim())
-          .filter(cell => cell.length > 0);
-        tableRows.push(cells);
-        continue;
-      }
-
-      // If we were in a table but this line isn't, render the table
-      if (inTable && tableRows.length > 0) {
-        renderTable(tableRows);
-        tableRows = [];
-        inTable = false;
-      }
-
-      // Handle headers (###, ##, #)
-      if (trimmed.startsWith('###')) {
-        addText(cleanMarkdown(trimmed.replace(/^###\s*/, '')), 12, true);
-      } else if (trimmed.startsWith('##')) {
-        addText(cleanMarkdown(trimmed.replace(/^##\s*/, '')), 13, true);
-      } else if (trimmed.startsWith('#')) {
-        addText(cleanMarkdown(trimmed.replace(/^#\s*/, '')), 14, true);
-      }
-      // Handle list items (-, *, •)
-      else if (trimmed.match(/^[-*•]\s/)) {
-        addText('  • ' + cleanMarkdown(trimmed.replace(/^[-*•]\s*/, '')), 10);
-      }
-      // Handle numbered lists
-      else if (trimmed.match(/^\d+\.\s/)) {
-        addText(cleanMarkdown(trimmed), 10);
-      }
-      // Check if line starts with bold
-      else if (trimmed.match(/^\*\*[^*]+\*\*/)) {
-        addText(cleanMarkdown(trimmed), 10, true);
-      }
-      // Regular text
-      else {
-        addText(cleanMarkdown(trimmed), 10);
-      }
-    }
-
-    // Render any remaining table
-    if (inTable && tableRows.length > 0) {
-      renderTable(tableRows);
+    for (const token of tokens) {
+      renderToken(token);
     }
   };
 
-  // Helper to clean markdown formatting
-  const cleanMarkdown = (text: string): string => {
-    // Remove bold markers
-    return text.replace(/\*\*/g, '');
+  // Render individual markdown tokens
+  const renderToken = (token: any) => {
+    switch (token.type) {
+      case 'heading':
+        const headingSizes = [14, 13, 12, 11, 10, 10]; // h1-h6 sizes
+        const size = headingSizes[token.depth - 1] || 10;
+        addText(cleanMarkdown(token.text), size, true);
+        yPosition += 2;
+        break;
+
+      case 'paragraph':
+        addText(cleanMarkdown(token.text), 10);
+        break;
+
+      case 'list':
+        renderList(token);
+        break;
+
+      case 'table':
+        renderTable(token);
+        break;
+
+      case 'blockquote':
+        addText('  ' + cleanMarkdown(token.text), 10);
+        break;
+
+      case 'code':
+        addText(token.text, 9);
+        break;
+
+      case 'space':
+        yPosition += 3;
+        break;
+
+      default:
+        // Handle any other types as plain text
+        if (token.text) {
+          addText(cleanMarkdown(token.text), 10);
+        }
+    }
   };
 
-  // Helper to render tables as simple text
-  const renderTable = (rows: string[][]) => {
-    if (rows.length === 0) return;
+  // Render list items
+  const renderList = (listToken: any) => {
+    for (const item of listToken.items) {
+      const bullet = listToken.ordered
+        ? `${listToken.start ? listToken.start : 1}. `
+        : '  • ';
 
-    // First row is header
-    if (rows[0]) {
-      addText(rows[0].join(' | '), 10, true);
+      addText(bullet + cleanMarkdown(item.text), 10);
+
+      // Handle nested lists
+      if (item.tokens) {
+        for (const subToken of item.tokens) {
+          if (subToken.type === 'list') {
+            renderList(subToken);
+          }
+        }
+      }
+    }
+    yPosition += 2;
+  };
+
+  // Render tables
+  const renderTable = (tableToken: any) => {
+    // Render header
+    if (tableToken.header && tableToken.header.length > 0) {
+      const headerCells = tableToken.header.map((cell: any) => cleanMarkdown(cell.text));
+      addText(headerCells.join(' | '), 10, true);
       yPosition += 2;
     }
 
-    // Remaining rows
-    for (let i = 1; i < rows.length; i++) {
-      addText(rows[i].join(' | '), 9);
+    // Render rows
+    if (tableToken.rows) {
+      for (const row of tableToken.rows) {
+        const cells = row.map((cell: any) => cleanMarkdown(cell.text));
+        addText(cells.join(' | '), 9);
+      }
     }
 
     yPosition += 3;
+  };
+
+  // Helper to clean markdown formatting (bold, italic, code, links)
+  const cleanMarkdown = (text: string): string => {
+    return text
+      .replace(/\*\*/g, '')      // Remove bold
+      .replace(/\*/g, '')         // Remove italic
+      .replace(/__/g, '')         // Remove bold (underscore)
+      .replace(/_/g, '')          // Remove italic (underscore)
+      .replace(/`/g, '')          // Remove code backticks
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Convert links to text
   };
 
   // Header
