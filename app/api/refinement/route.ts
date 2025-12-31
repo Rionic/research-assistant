@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { ResearchSession, SubmitRefinementRequest, SubmitRefinementResponse } from '@/types';
+import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const geminiAI = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY || ''
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -90,13 +100,14 @@ export async function POST(request: NextRequest) {
 
 // Background research function
 async function performResearch(sessionId: string, refinedPrompt: string) {
-  const { mockParallelResearch } = await import('@/lib/mockApi');
   const sessionRef = adminDb.collection('research_sessions').doc(sessionId);
 
   try {
-    // Run both research tasks in parallel (using mocks)
-    // TODO: Replace with real OpenAI o3-deep-research and Gemini when credits available
-    const { openaiResult, geminiResult } = await mockParallelResearch(refinedPrompt);
+    // Run both research tasks in parallel
+    const [openaiResult, geminiResult] = await Promise.all([
+      performOpenAIResearch(refinedPrompt),
+      performGeminiResearch(refinedPrompt),
+    ]);
 
     // Update session with results
     await sessionRef.update({
@@ -128,6 +139,41 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
       updatedAt: new Date(),
     });
   }
+}
+
+// Perform OpenAI deep research
+async function performOpenAIResearch(prompt: string): Promise<string> {
+  console.log('🤖 Starting OpenAI research...');
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a thorough research assistant. Provide comprehensive, well-structured research findings with sources and citations. Include specific data points, trends, and actionable insights.',
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 3000,
+  });
+
+  console.log('✅ OpenAI research completed');
+  return completion.choices[0].message.content || '';
+}
+
+// Perform Gemini research
+async function performGeminiResearch(prompt: string): Promise<string> {
+  console.log('🔮 Starting Gemini research...');
+  const response = await geminiAI.models.generateContent({
+    model: 'gemini-flash-latest',
+    contents: prompt,
+  });
+
+  console.log('✅ Gemini research completed');
+  return response.text || '';
 }
 
 async function generateAndEmailReport(session: ResearchSession) {
