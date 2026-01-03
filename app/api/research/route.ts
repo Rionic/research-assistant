@@ -14,24 +14,32 @@ const geminiAI = new GoogleGenAI({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[API] Research request received');
     const body: StartResearchRequest = await request.json();
     const { prompt } = body;
 
     const userId = request.headers.get('x-user-id');
     const userEmail = request.headers.get('x-user-email');
+    console.log('[API] User:', userId ? 'authenticated' : 'not authenticated');
 
     if (!userId || !userEmail) {
+      console.log('[API] Missing auth headers');
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     if (!prompt || prompt.trim().length === 0) {
+      console.log('[API] Missing prompt');
       return NextResponse.json({ error: 'Research prompt is required' }, { status: 400 });
     }
 
+    console.log('[API] Creating Firestore session...');
     const sessionRef = adminDb.collection('research_sessions').doc();
     const sessionId = sessionRef.id;
+    console.log('[API] Session created:', sessionId);
 
+    console.log('[API] Getting refinement questions...');
     const refinementQuestions = await getRefinementQuestions(prompt);
+    console.log('[API] Refinement questions:', refinementQuestions.length);
 
     if (refinementQuestions.length === 0) {
       const session: ResearchSession = {
@@ -78,9 +86,17 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    console.error('Error starting research:', error);
-    return NextResponse.json({ error: 'Failed to start research session' }, { status: 500 });
+  } catch (error: any) {
+    console.error('[API] Error starting research:', error);
+    console.error('[API] Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      code: error?.code
+    });
+    return NextResponse.json({
+      error: 'Failed to start research session',
+      details: error?.message
+    }, { status: 500 });
   }
 }
 
