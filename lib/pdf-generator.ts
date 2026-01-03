@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { ResearchSession } from '@/types';
+import { marked } from 'marked';
 
 export async function generateResearchPDF(session: ResearchSession): Promise<Buffer> {
   const doc = new jsPDF({
@@ -15,21 +16,194 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
   let yPosition = margin;
 
   // Helper function to add text with automatic page breaks
-  const addText = (text: string, fontSize: number = 10, isBold: boolean = false) => {
+  const addText = (text: string, fontSize: number = 10, isBold: boolean = false, indent: number = 0) => {
     doc.setFontSize(fontSize);
     doc.setFont('helvetica', isBold ? 'bold' : 'normal');
 
-    const lines = doc.splitTextToSize(text, maxWidth);
+    const lines = doc.splitTextToSize(text, maxWidth - indent);
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
       if (yPosition + 10 > pageHeight - margin) {
         doc.addPage();
         yPosition = margin;
       }
-      doc.text(line, margin, yPosition);
+      doc.text(lines[i], margin + indent, yPosition);
       yPosition += fontSize * 0.5;
     }
     yPosition += 5; // Add spacing after text block
+  };
+
+  // Helper function to parse and render markdown text using marked
+  const addMarkdownText = (markdownText: string) => {
+    const tokens = marked.lexer(markdownText);
+
+    for (const token of tokens) {
+      renderToken(token);
+    }
+  };
+
+  // Render individual markdown tokens
+  const renderToken = (token: any) => {
+    switch (token.type) {
+      case 'heading':
+        const headingSizes = [14, 13, 12, 11, 10, 10]; // h1-h6 sizes
+        const size = headingSizes[token.depth - 1] || 10;
+        addText(cleanMarkdown(token.text), size, true);
+        yPosition += 2;
+        break;
+
+      case 'paragraph':
+        addText(cleanMarkdown(token.text), 10);
+        break;
+
+      case 'list':
+        renderList(token);
+        break;
+
+      case 'table':
+        renderTable(token);
+        break;
+
+      case 'blockquote':
+        addText('  ' + cleanMarkdown(token.text), 10);
+        break;
+
+      case 'code':
+        addText(token.text, 9);
+        break;
+
+      case 'space':
+        yPosition += 3;
+        break;
+
+      default:
+        // Handle any other types as plain text
+        if (token.text) {
+          addText(cleanMarkdown(token.text), 10);
+        }
+    }
+  };
+
+  // Render list items with proper hanging indentation
+  const renderList = (listToken: any, indentLevel: number = 0) => {
+    let itemNumber = listToken.start || 1;
+
+    for (const item of listToken.items) {
+      const bullet = listToken.ordered ? `${itemNumber}. ` : '• ';
+      const bulletWidth = doc.getTextWidth(bullet);
+      const leftIndent = indentLevel * 8; // 8mm per indent level
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+
+      // Check for page break
+      if (yPosition + 10 > pageHeight - margin) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      // Draw bullet
+      doc.text(bullet, margin + leftIndent, yPosition);
+
+      // Draw text with hanging indent
+      const textIndent = leftIndent + bulletWidth + 2;
+      const lines = doc.splitTextToSize(cleanMarkdown(item.text), maxWidth - textIndent);
+
+      for (let i = 0; i < lines.length; i++) {
+        if (i > 0 && yPosition + 10 > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+        }
+        doc.text(lines[i], margin + textIndent, yPosition);
+        yPosition += 5;
+      }
+
+      // Handle nested lists
+      if (item.tokens) {
+        for (const subToken of item.tokens) {
+          if (subToken.type === 'list') {
+            renderList(subToken, indentLevel + 1);
+          }
+        }
+      }
+
+      if (listToken.ordered) itemNumber++;
+    }
+    yPosition += 2;
+  };
+
+  // Render tables with proper formatting
+  const renderTable = (tableToken: any) => {
+    if (!tableToken.header || tableToken.header.length === 0) return;
+
+    const numColumns = tableToken.header.length;
+    const columnWidth = maxWidth / numColumns;
+    const rowHeight = 8;
+    const cellPadding = 2;
+
+    // Helper to draw a table row
+    const drawRow = (cells: string[], isHeader: boolean = false) => {
+      // Check if we need a new page
+      if (yPosition + rowHeight > pageHeight - margin) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      const startY = yPosition;
+
+      // Set font for this row
+      doc.setFontSize(isHeader ? 10 : 9);
+      doc.setFont('helvetica', isHeader ? 'bold' : 'normal');
+
+      // Draw cells
+      for (let i = 0; i < cells.length; i++) {
+        const x = margin + (i * columnWidth);
+        const text = cleanMarkdown(cells[i]);
+
+        // Draw cell border
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(x, startY, columnWidth, rowHeight);
+
+        // Fill header background
+        if (isHeader) {
+          doc.setFillColor(240, 240, 240);
+          doc.rect(x, startY, columnWidth, rowHeight, 'F');
+          doc.rect(x, startY, columnWidth, rowHeight); // Redraw border
+        }
+
+        // Draw text (truncate if too long)
+        const maxCellWidth = columnWidth - (2 * cellPadding);
+        const truncatedText = doc.splitTextToSize(text, maxCellWidth)[0] || '';
+        doc.text(truncatedText, x + cellPadding, startY + 5);
+      }
+
+      yPosition += rowHeight;
+    };
+
+    // Draw header row
+    const headerCells = tableToken.header.map((cell: any) => cell.text);
+    drawRow(headerCells, true);
+
+    // Draw data rows
+    if (tableToken.rows) {
+      for (const row of tableToken.rows) {
+        const cells = row.map((cell: any) => cell.text);
+        drawRow(cells, false);
+      }
+    }
+
+    yPosition += 5; // Add spacing after table
+  };
+
+  // Helper to clean markdown formatting (bold, italic, code, links)
+  const cleanMarkdown = (text: string): string => {
+    return text
+      .replace(/\*\*/g, '')      // Remove bold
+      .replace(/\*/g, '')         // Remove italic
+      .replace(/__/g, '')         // Remove bold (underscore)
+      .replace(/_/g, '')          // Remove italic (underscore)
+      .replace(/`/g, '')          // Remove code backticks
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Convert links to text
   };
 
   // Header
@@ -51,7 +225,12 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     addText(`Refined Prompt: ${session.refinedPrompt}`, 10);
   }
 
-  addText(`Date: ${new Date(session.createdAt).toLocaleString()}`, 10);
+  // Fix Firestore timestamp conversion
+  const createdDate = (session.createdAt as any)._seconds
+    ? new Date((session.createdAt as any)._seconds * 1000)
+    : new Date(session.createdAt);
+
+  addText(`Date: ${createdDate.toLocaleString()}`, 10);
   addText(`Status: ${session.status.toUpperCase()}`, 10);
 
   yPosition += 10;
@@ -76,7 +255,7 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     doc.setDrawColor(41, 128, 185);
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 5;
-    addText(session.openaiResult, 10);
+    addMarkdownText(session.openaiResult);
     yPosition += 10;
   }
 
@@ -86,7 +265,7 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     doc.setDrawColor(219, 68, 55);
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 5;
-    addText(session.geminiResult, 10);
+    addMarkdownText(session.geminiResult);
   }
 
   // Footer on each page
