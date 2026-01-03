@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -21,13 +21,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // Cleanup listener on unmount
-  useEffect(() => {
-    return () => {
-      // Cleanup happens automatically when modal closes
-    };
-  }, []);
-
   if (!isOpen) return null;
 
   const handleSubmitPrompt = async (e: React.FormEvent) => {
@@ -37,7 +30,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
     setIsLoading(true);
 
     try {
-      // Call backend API to start research and get refinement questions
       const response = await fetch('/api/research', {
         method: 'POST',
         headers: {
@@ -56,14 +48,11 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
       setSessionId(data.sessionId);
 
       if (data.refinementQuestions && data.refinementQuestions.length > 0) {
-        // Has refinement questions
         setRefinementQuestions(data.refinementQuestions);
         setStep('refinement');
         setIsLoading(false);
       } else {
-        // No refinement questions, backend is processing
         setStep('processing');
-        // Listen for updates from Firestore
         watchSession(data.sessionId);
       }
     } catch (error) {
@@ -78,7 +67,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
     if (!currentAnswer.trim() || !sessionId || !user) return;
 
     try {
-      // Submit answer to backend
       const response = await fetch('/api/refinement', {
         method: 'POST',
         headers: {
@@ -97,19 +85,15 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
 
       const data = await response.json();
 
-      // Save answer locally
       const updatedQuestions = [...refinementQuestions];
       updatedQuestions[currentQuestionIndex].answer = currentAnswer;
       setRefinementQuestions(updatedQuestions);
       setCurrentAnswer('');
 
       if (data.status === 'processing') {
-        // All questions answered, backend is processing
         setStep('processing');
-        // Listen for updates from Firestore
         watchSession(sessionId);
       } else if (data.nextQuestion) {
-        // Move to next question
         setCurrentQuestionIndex(currentQuestionIndex + 1);
       }
     } catch (error) {
@@ -118,7 +102,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
     }
   };
 
-  // Watch Firestore session for real-time updates
   const watchSession = (sessionId: string) => {
     const sessionRef = doc(db, 'research_sessions', sessionId);
 
@@ -127,12 +110,10 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
         const session = docSnapshot.data() as ResearchSession;
 
         if (session.status === 'completed' || session.status === 'email_sent') {
-          // Research complete! Close modal
           unsubscribe();
           resetModal();
           onClose();
         } else if (session.status === 'failed') {
-          // Error occurred
           unsubscribe();
           alert(`Research failed: ${session.error || 'Unknown error'}`);
           resetModal();
@@ -141,7 +122,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
       }
     });
 
-    // Store unsubscribe function for cleanup
     return unsubscribe;
   };
 
@@ -165,7 +145,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <h2 className="text-2xl font-bold text-gray-900">New Research</h2>
           {!isLoading && (
@@ -180,9 +159,7 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
           )}
         </div>
 
-        {/* Content */}
         <div className="p-6">
-          {/* Step 1: Initial Prompt */}
           {step === 'prompt' && (
             <form onSubmit={handleSubmitPrompt} className="space-y-4">
               <div>
@@ -231,10 +208,8 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
             </form>
           )}
 
-          {/* Step 2: Refinement Questions */}
           {step === 'refinement' && refinementQuestions.length > 0 && (
             <div className="space-y-6">
-              {/* Progress */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-700">
@@ -252,7 +227,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
                 </div>
               </div>
 
-              {/* Question */}
               <form onSubmit={handleSubmitAnswer} className="space-y-4">
                 <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-r-lg">
                   <p className="font-medium text-gray-900">
@@ -284,7 +258,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
                 </button>
               </form>
 
-              {/* Previously answered questions */}
               {currentQuestionIndex > 0 && (
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Previous answers:</h4>
@@ -301,7 +274,6 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
             </div>
           )}
 
-          {/* Step 3: Processing */}
           {step === 'processing' && (
             <div className="text-center py-12">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6">

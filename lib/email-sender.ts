@@ -2,7 +2,6 @@ import sgMail from '@sendgrid/mail';
 import { ResearchSession } from '@/types';
 import { generateResearchPDF } from './pdf-generator';
 
-// Initialize SendGrid
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
@@ -16,17 +15,9 @@ export async function sendResearchReport(session: ResearchSession): Promise<void
     throw new Error('SendGrid from email is not configured');
   }
 
-  console.log('📧 Attempting to send email to:', session.userEmail);
-  console.log('📧 From:', process.env.SENDGRID_FROM_EMAIL);
-
-  // Generate PDF
   const pdfBuffer = await generateResearchPDF(session);
-  console.log('📄 PDF generated, size:', pdfBuffer.length, 'bytes');
-
-  // Create email summary
   const summary = generateEmailSummary(session);
 
-  // Prepare email
   const msg = {
     to: session.userEmail,
     from: {
@@ -46,14 +37,7 @@ export async function sendResearchReport(session: ResearchSession): Promise<void
     ],
   };
 
-  // Send email
-  try {
-    const result = await sgMail.send(msg);
-    console.log('✅ Email sent successfully!', result[0].statusCode);
-  } catch (error) {
-    console.error('❌ SendGrid error:', error);
-    throw error;
-  }
+  await sgMail.send(msg);
 }
 
 function generateEmailSummary(session: ResearchSession): string {
@@ -71,7 +55,6 @@ function generateEmailSummary(session: ResearchSession): string {
     summary += '\n';
   }
 
-  // Fix Firestore timestamp conversion
   const completedDate = session.completedAt
     ? (session.completedAt as any)._seconds
       ? new Date((session.completedAt as any)._seconds * 1000)
@@ -80,7 +63,6 @@ function generateEmailSummary(session: ResearchSession): string {
 
   summary += `Research completed on: ${completedDate.toLocaleString()}\n\n`;
 
-  // Add key insights preview
   summary += `Key Insights:\n`;
   summary += `- Research conducted using OpenAI's Deep Research API\n`;
   summary += `- Cross-referenced with Google Gemini API\n`;
@@ -92,7 +74,6 @@ function generateEmailSummary(session: ResearchSession): string {
 }
 
 function generateEmailHTML(session: ResearchSession, textSummary: string): string {
-  // Fix Firestore timestamp conversion
   const completedDate = session.completedAt
     ? (session.completedAt as any)._seconds
       ? new Date((session.completedAt as any)._seconds * 1000)

@@ -18,26 +18,18 @@ export async function POST(request: NextRequest) {
     const { sessionId, questionId, answer } = body;
 
     if (!sessionId || !questionId || !answer) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get session from Firestore
     const sessionRef = adminDb.collection('research_sessions').doc(sessionId);
     const sessionDoc = await sessionRef.get();
 
     if (!sessionDoc.exists) {
-      return NextResponse.json(
-        { error: 'Research session not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Research session not found' }, { status: 404 });
     }
 
     const session = sessionDoc.data() as ResearchSession;
 
-    // Update the question with the answer
     const updatedQuestions = session.refinementQuestions.map(q =>
       q.id === questionId ? { ...q, answer } : q
     );
@@ -47,27 +39,21 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     });
 
-    // Check if all questions are answered
     const allAnswered = updatedQuestions.every(q => q.answer);
 
     if (allAnswered) {
-      // Generate refined prompt
       const questionsAndAnswers = updatedQuestions
         .map(q => `Q: ${q.question}\nA: ${q.answer}`)
         .join('\n\n');
 
       const refinedPrompt = `${session.initialPrompt}\n\nAdditional context:\n${questionsAndAnswers}`;
 
-      // Update session with refined prompt and start processing
       await sessionRef.update({
         refinedPrompt,
         status: 'processing',
         updatedAt: new Date(),
       });
 
-      // Trigger background research processes
-      // In production, use a queue system or cloud functions
-      // For now, we'll use Promise.all (not ideal for long-running tasks)
       performResearch(sessionId, refinedPrompt);
 
       const response: SubmitRefinementResponse = {
@@ -78,7 +64,6 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(response);
     } else {
-      // Find next unanswered question
       const nextQuestion = updatedQuestions.find(q => !q.answer);
 
       const response: SubmitRefinementResponse = {
@@ -91,25 +76,19 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error submitting refinement:', error);
-    return NextResponse.json(
-      { error: 'Failed to submit refinement' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to submit refinement' }, { status: 500 });
   }
 }
 
-// Background research function
 async function performResearch(sessionId: string, refinedPrompt: string) {
   const sessionRef = adminDb.collection('research_sessions').doc(sessionId);
 
   try {
-    // Run both research tasks in parallel
     const [openaiResult, geminiResult] = await Promise.all([
       performOpenAIResearch(refinedPrompt),
       performGeminiResearch(refinedPrompt),
     ]);
 
-    // Update session with results
     await sessionRef.update({
       openaiResult,
       geminiResult,
@@ -118,14 +97,11 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
       updatedAt: new Date(),
     });
 
-    // Get updated session data
     const sessionDoc = await sessionRef.get();
     const session = sessionDoc.data() as ResearchSession;
 
-    // Generate and send PDF report
     await generateAndEmailReport(session);
 
-    // Update status to email_sent
     await sessionRef.update({
       status: 'email_sent',
       emailSentAt: new Date(),
@@ -141,9 +117,7 @@ async function performResearch(sessionId: string, refinedPrompt: string) {
   }
 }
 
-// Perform OpenAI deep research
 async function performOpenAIResearch(prompt: string): Promise<string> {
-  console.log('🤖 Starting OpenAI research...');
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
@@ -160,19 +134,15 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
     max_tokens: 3000,
   });
 
-  console.log('✅ OpenAI research completed');
   return completion.choices[0].message.content || '';
 }
 
-// Perform Gemini research
 async function performGeminiResearch(prompt: string): Promise<string> {
-  console.log('🔮 Starting Gemini research...');
   const response = await geminiAI.models.generateContent({
     model: 'gemini-flash-latest',
     contents: prompt,
   });
 
-  console.log('✅ Gemini research completed');
   return response.text || '';
 }
 
