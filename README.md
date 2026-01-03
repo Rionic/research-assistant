@@ -178,8 +178,7 @@ research-assistant/
 │   ├── firebase.ts                # Firebase client SDK
 │   ├── firebase-admin.ts          # Firebase Admin SDK
 │   ├── email-sender.ts            # SendGrid email delivery
-│   ├── pdf-generator.ts           # jsPDF report generation
-│   └── mockApi.ts                 # Mock APIs for testing
+│   └── pdf-generator.ts           # jsPDF report generation
 ├── types/
 │   └── index.ts                   # TypeScript type definitions
 └── .env.example                   # Environment variable template
@@ -211,12 +210,12 @@ User Input → OpenAI Refinement → Firestore Save → Parallel Research
 
 ## 🧪 Testing
 
-Run the mock API test flow:
+Run the backend test suite:
 ```bash
 npm run test:flow
 ```
 
-This simulates the entire research flow with mock data (no API costs).
+This tests all API integrations and components (OpenAI, Gemini, PDF generation, email sending).
 
 ## 🚀 Deployment
 
