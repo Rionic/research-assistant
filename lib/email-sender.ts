@@ -7,37 +7,54 @@ if (process.env.SENDGRID_API_KEY) {
 }
 
 export async function sendResearchReport(session: ResearchSession): Promise<void> {
-  if (!process.env.SENDGRID_API_KEY) {
-    throw new Error('SendGrid API key is not configured');
-  }
+  try {
+    console.log('[EMAIL] Starting email report generation for session:', session.id);
 
-  if (!process.env.SENDGRID_FROM_EMAIL) {
-    throw new Error('SendGrid from email is not configured');
-  }
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error('[EMAIL] SendGrid API key is not configured');
+      throw new Error('SendGrid API key is not configured');
+    }
 
-  const pdfBuffer = await generateResearchPDF(session);
-  const summary = generateEmailSummary(session);
+    if (!process.env.SENDGRID_FROM_EMAIL) {
+      console.error('[EMAIL] SendGrid from email is not configured');
+      throw new Error('SendGrid from email is not configured');
+    }
 
-  const msg = {
-    to: session.userEmail,
-    from: {
-      email: process.env.SENDGRID_FROM_EMAIL,
-      name: process.env.SENDGRID_FROM_NAME || 'Research Assistant',
-    },
-    subject: `Your Research Report: ${session.initialPrompt.substring(0, 50)}${session.initialPrompt.length > 50 ? '...' : ''}`,
-    text: summary,
-    html: generateEmailHTML(session, summary),
-    attachments: [
-      {
-        content: pdfBuffer.toString('base64'),
-        filename: `research-report-${session.id}.pdf`,
-        type: 'application/pdf',
-        disposition: 'attachment',
+    console.log('[EMAIL] Generating PDF...');
+    const pdfBuffer = await generateResearchPDF(session);
+    console.log('[EMAIL] PDF generated, size:', pdfBuffer.length, 'bytes');
+
+    console.log('[EMAIL] Generating email summary...');
+    const summary = generateEmailSummary(session);
+    console.log('[EMAIL] Summary generated, length:', summary.length);
+
+    const msg = {
+      to: session.userEmail,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'Research Assistant',
       },
-    ],
-  };
+      subject: `Your Research Report: ${session.initialPrompt.substring(0, 50)}${session.initialPrompt.length > 50 ? '...' : ''}`,
+      text: summary,
+      html: generateEmailHTML(session, summary),
+      attachments: [
+        {
+          content: pdfBuffer.toString('base64'),
+          filename: `research-report-${session.id}.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment',
+        },
+      ],
+    };
 
-  await sgMail.send(msg);
+    console.log('[EMAIL] Sending email to:', session.userEmail);
+    await sgMail.send(msg);
+    console.log('[EMAIL] Email sent successfully');
+  } catch (error) {
+    console.error('[EMAIL] Error sending research report:', error);
+    console.error('[EMAIL] Error details:', error instanceof Error ? error.message : String(error));
+    throw error;
+  }
 }
 
 function generateEmailSummary(session: ResearchSession): string {
