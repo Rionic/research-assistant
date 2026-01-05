@@ -4,13 +4,18 @@ import { ResearchSession, StartResearchRequest, StartResearchResponse } from '@/
 import OpenAI from 'openai';
 import { GoogleGenAI } from '@google/genai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization functions
+function getOpenAI() {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
-const geminiAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || ''
-});
+function getGeminiAI() {
+  return new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY || ''
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,7 +60,14 @@ export async function POST(request: NextRequest) {
       };
 
       await sessionRef.set(session);
-      performResearch(sessionId, prompt);
+
+      // Use Vercel's waitUntil to keep function alive for background work
+      if (typeof (globalThis as any).waitUntil === 'function') {
+        (globalThis as any).waitUntil(performResearch(sessionId, prompt));
+      } else {
+        // Fallback: call webhook to trigger research externally
+        triggerResearchWebhook(sessionId, prompt);
+      }
 
       const response: StartResearchResponse = {
         sessionId,
@@ -102,7 +114,7 @@ export async function POST(request: NextRequest) {
 
 async function getRefinementQuestions(prompt: string) {
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
@@ -202,7 +214,7 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
     console.log('[OPENAI] API Key present:', !!process.env.OPENAI_API_KEY);
     console.log('[OPENAI] API Key prefix:', process.env.OPENAI_API_KEY?.substring(0, 10) + '...');
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
@@ -234,7 +246,7 @@ async function performGeminiResearch(prompt: string): Promise<string> {
     console.log('[GEMINI] API Key present:', !!process.env.GEMINI_API_KEY);
     console.log('[GEMINI] API Key prefix:', process.env.GEMINI_API_KEY?.substring(0, 10) + '...');
 
-    const response = await geminiAI.models.generateContent({
+    const response = await getGeminiAI().models.generateContent({
       model: 'gemini-flash-latest',
       contents: prompt,
     });
@@ -252,4 +264,19 @@ async function performGeminiResearch(prompt: string): Promise<string> {
 async function generateAndEmailReport(session: ResearchSession) {
   const { sendResearchReport } = await import('@/lib/email-sender');
   await sendResearchReport(session);
+}
+
+// Trigger research via external webhook (fallback for platforms without waitUntil)
+function triggerResearchWebhook(sessionId: string, prompt: string) {
+  // Make a non-blocking fetch call to trigger research processing
+  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  fetch(`${apiUrl}/api/process-research`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, prompt }),
+  }).catch(err => {
+    console.error('[WEBHOOK] Failed to trigger research webhook:', err);
+    // Research will remain in 'processing' state - user can retry
+  });
 }

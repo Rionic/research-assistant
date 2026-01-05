@@ -1,21 +1,23 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getAuth, Auth } from 'firebase-admin/auth';
 
-let adminApp: App;
+let adminApp: App | undefined;
 
-// Initialize Firebase Admin SDK (singleton pattern)
-if (!getApps().length) {
+// Lazy initialization function - only initializes when first called
+function getAdminApp(): App {
+  if (adminApp) {
+    return adminApp;
+  }
+
+  if (getApps().length > 0) {
+    adminApp = getApps()[0];
+    return adminApp;
+  }
+
   console.log('[FIREBASE-ADMIN] Initializing Firebase Admin SDK');
-  console.log('[FIREBASE-ADMIN] Project ID:', process.env.FIREBASE_ADMIN_PROJECT_ID);
-  console.log('[FIREBASE-ADMIN] Client Email:', process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
-  console.log('[FIREBASE-ADMIN] Private Key present:', !!process.env.FIREBASE_ADMIN_PRIVATE_KEY);
-  console.log('[FIREBASE-ADMIN] Private Key length:', process.env.FIREBASE_ADMIN_PRIVATE_KEY?.length);
-  console.log('[FIREBASE-ADMIN] Private Key starts with:', process.env.FIREBASE_ADMIN_PRIVATE_KEY?.substring(0, 30));
 
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  console.log('[FIREBASE-ADMIN] Private Key after replace, length:', privateKey?.length);
-  console.log('[FIREBASE-ADMIN] Private Key after replace, starts with:', privateKey?.substring(0, 30));
 
   try {
     adminApp = initializeApp({
@@ -26,16 +28,28 @@ if (!getApps().length) {
       }),
     });
     console.log('[FIREBASE-ADMIN] Firebase Admin initialized successfully');
+    return adminApp;
   } catch (error) {
     console.error('[FIREBASE-ADMIN] Error initializing Firebase Admin:', error);
     throw error;
   }
-} else {
-  adminApp = getApps()[0];
-  console.log('[FIREBASE-ADMIN] Using existing Firebase Admin app');
 }
 
-// Export admin services
-export const adminDb = getFirestore(adminApp);
-export const adminAuth = getAuth(adminApp);
-export { adminApp };
+// Export admin services with lazy initialization
+export const adminDb = new Proxy({} as Firestore, {
+  get(target, prop) {
+    const db = getFirestore(getAdminApp());
+    const value = (db as any)[prop];
+    return typeof value === 'function' ? value.bind(db) : value;
+  }
+});
+
+export const adminAuth = new Proxy({} as Auth, {
+  get(target, prop) {
+    const auth = getAuth(getAdminApp());
+    const value = (auth as any)[prop];
+    return typeof value === 'function' ? value.bind(auth) : value;
+  }
+});
+
+export { getAdminApp as adminApp };

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { ResearchSession, SubmitRefinementRequest, SubmitRefinementResponse } from '@/types';
+import { ResearchSession } from '@/types';
 import OpenAI from 'openai';
 import { GoogleGenAI } from '@google/genai';
 
@@ -17,77 +17,34 @@ function getGeminiAI() {
   });
 }
 
+// Maximum execution time on Vercel (60 seconds on Pro, 300 on Enterprise)
+export const maxDuration = 300; // 5 minutes
+
 export async function POST(request: NextRequest) {
   try {
-    const body: SubmitRefinementRequest = await request.json();
-    const { sessionId, questionId, answer } = body;
+    const body = await request.json();
+    const { sessionId, prompt } = body;
 
-    if (!sessionId || !questionId || !answer) {
+    if (!sessionId || !prompt) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const sessionRef = adminDb.collection('research_sessions').doc(sessionId);
-    const sessionDoc = await sessionRef.get();
+    console.log('[PROCESS-RESEARCH] Starting background research for session:', sessionId);
 
-    if (!sessionDoc.exists) {
-      return NextResponse.json({ error: 'Research session not found' }, { status: 404 });
-    }
+    // Perform the research (this runs in a separate request lifecycle)
+    await performResearch(sessionId, prompt);
 
-    const session = sessionDoc.data() as ResearchSession;
-
-    const updatedQuestions = session.refinementQuestions.map(q =>
-      q.id === questionId ? { ...q, answer } : q
-    );
-
-    await sessionRef.update({
-      refinementQuestions: updatedQuestions,
-      updatedAt: new Date(),
+    return NextResponse.json({
+      success: true,
+      message: 'Research processing completed',
+      sessionId
     });
-
-    const allAnswered = updatedQuestions.every(q => q.answer);
-
-    if (allAnswered) {
-      const questionsAndAnswers = updatedQuestions
-        .map(q => `Q: ${q.question}\nA: ${q.answer}`)
-        .join('\n\n');
-
-      const refinedPrompt = `${session.initialPrompt}\n\nAdditional context:\n${questionsAndAnswers}`;
-
-      await sessionRef.update({
-        refinedPrompt,
-        status: 'processing',
-        updatedAt: new Date(),
-      });
-
-      // Use Vercel's waitUntil to keep function alive for background work
-      if (typeof (globalThis as any).waitUntil === 'function') {
-        (globalThis as any).waitUntil(performResearch(sessionId, refinedPrompt));
-      } else {
-        // Fallback: call webhook to trigger research externally
-        triggerResearchWebhook(sessionId, refinedPrompt);
-      }
-
-      const response: SubmitRefinementResponse = {
-        sessionId,
-        status: 'processing',
-        refinedPrompt,
-      };
-
-      return NextResponse.json(response);
-    } else {
-      const nextQuestion = updatedQuestions.find(q => !q.answer);
-
-      const response: SubmitRefinementResponse = {
-        sessionId,
-        status: 'refining',
-        nextQuestion,
-      };
-
-      return NextResponse.json(response);
-    }
   } catch (error) {
-    console.error('Error submitting refinement:', error);
-    return NextResponse.json({ error: 'Failed to submit refinement' }, { status: 500 });
+    console.error('[PROCESS-RESEARCH] Error:', error);
+    return NextResponse.json({
+      error: 'Failed to process research',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
 
@@ -155,7 +112,6 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
   try {
     console.log('[OPENAI] Starting OpenAI research request');
     console.log('[OPENAI] API Key present:', !!process.env.OPENAI_API_KEY);
-    console.log('[OPENAI] API Key prefix:', process.env.OPENAI_API_KEY?.substring(0, 10) + '...');
 
     const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
@@ -187,7 +143,6 @@ async function performGeminiResearch(prompt: string): Promise<string> {
   try {
     console.log('[GEMINI] Starting Gemini research request');
     console.log('[GEMINI] API Key present:', !!process.env.GEMINI_API_KEY);
-    console.log('[GEMINI] API Key prefix:', process.env.GEMINI_API_KEY?.substring(0, 10) + '...');
 
     const response = await getGeminiAI().models.generateContent({
       model: 'gemini-flash-latest',
@@ -207,19 +162,4 @@ async function performGeminiResearch(prompt: string): Promise<string> {
 async function generateAndEmailReport(session: ResearchSession) {
   const { sendResearchReport } = await import('@/lib/email-sender');
   await sendResearchReport(session);
-}
-
-// Trigger research via external webhook (fallback for platforms without waitUntil)
-function triggerResearchWebhook(sessionId: string, prompt: string) {
-  // Make a non-blocking fetch call to trigger research processing
-  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-  fetch(`${apiUrl}/api/process-research`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, prompt }),
-  }).catch(err => {
-    console.error('[WEBHOOK] Failed to trigger research webhook:', err);
-    // Research will remain in 'processing' state - user can retry
-  });
 }
