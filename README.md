@@ -203,23 +203,6 @@ research-assistant/
 - All API keys should be rotated regularly
 - Client-side Firebase config is safe to expose (uses Firebase Security Rules)
 
-## 🎨 Design Decisions
-
-### Why This Architecture?
-- **Client-Server Separation**: Frontend handles UI/UX, backend handles API orchestration
-- **Real-time Updates**: Firestore listeners provide instant feedback without polling
-- **Parallel Execution**: Promise.all executes both APIs simultaneously for speed
-- **Markdown Parsing**: Using `marked` library for robust PDF formatting (tables, lists, etc.)
-
-### API Orchestration Flow
-```
-User Input → OpenAI Refinement → Firestore Save → Parallel Research
-                                                   ├─ OpenAI (gpt-4o)
-                                                   └─ Gemini (flash)
-                                                         ↓
-                                                   PDF Generation → Email → Update Firestore
-```
-
 ## 🧪 Testing
 
 Run the backend test suite:
@@ -251,27 +234,3 @@ This tests all API integrations and components (OpenAI, Gemini, PDF generation, 
   completedAt?: Timestamp;
 }
 ```
-
-## 🤖 AI Tool Usage
-
-This project was developed with assistance from **Claude Code** (Anthropic's CLI tool):
-
-- **Architecture Design**: Planning the client-server separation and API orchestration flow
-- **Code Generation**: Initial scaffolding of components, API routes, and utilities
-- **Debugging**: Resolving Firebase composite index issues, timestamp conversion bugs
-- **PDF Formatting**: Implementing markdown parsing with the `marked` library
-- **Best Practices**: TypeScript typing, error handling, security considerations
-
-The AI accelerated development by providing:
-- Boilerplate code for Firebase integration
-- TypeScript type definitions
-- Tailwind CSS styling patterns
-- API integration patterns for OpenAI and Gemini
-
-## 📝 License
-
-MIT
-
-## 👤 Author
-
-Created as a take-home assessment for full-stack developer position.

@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get session from Firestore
     const sessionRef = adminDb.collection('research_sessions').doc(sessionId);
     const sessionDoc = await sessionRef.get();
 

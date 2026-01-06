@@ -1,4 +1,3 @@
-#!/usr/bin/env tsx
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 import OpenAI from 'openai';

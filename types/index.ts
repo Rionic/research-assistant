@@ -1,4 +1,3 @@
-// User types
 export interface User {
   uid: string;
   email: string;
@@ -7,54 +6,44 @@ export interface User {
   createdAt: Date;
 }
 
-// Research session status
 export type ResearchStatus =
-  | 'pending'           // Initial state
-  | 'refining'          // OpenAI refinement questions in progress
-  | 'processing'        // Both APIs running research
-  | 'completed'         // Research completed, PDF generated
-  | 'failed'            // Error occurred
-  | 'email_sent';       // Final state - email delivered
+  | 'pending'
+  | 'refining'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'email_sent';
 
-// OpenAI refinement question
 export interface RefinementQuestion {
   id: string;
   question: string;
   answer?: string;
 }
 
-// Research session data stored in Firestore
 export interface ResearchSession {
   id: string;
   userId: string;
   userEmail: string;
 
-  // Research query
   initialPrompt: string;
   refinedPrompt?: string;
 
-  // OpenAI refinement flow
   refinementQuestions: RefinementQuestion[];
 
-  // Research results
   openaiResult?: string;
   geminiResult?: string;
 
-  // Metadata
   status: ResearchStatus;
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
 
-  // PDF and email
   pdfUrl?: string;
   emailSentAt?: Date;
 
-  // Error tracking
   error?: string;
 }
 
-// API request/response types
 export interface StartResearchRequest {
   prompt: string;
 }
@@ -75,7 +64,7 @@ export interface SubmitRefinementResponse {
   sessionId: string;
   status: ResearchStatus;
   nextQuestion?: RefinementQuestion;
-  refinedPrompt?: string; // Set when all questions answered
+  refinedPrompt?: string;
 }
 
 export interface ResearchResultsResponse {
@@ -87,7 +76,6 @@ export interface ResearchResultsResponse {
   error?: string;
 }
 
-// OpenAI Deep Research API types
 export interface OpenAIDeepResearchMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -110,7 +98,6 @@ export interface OpenAIDeepResearchResponse {
   };
 }
 
-// Gemini API types
 export interface GeminiResearchResponse {
   text: string;
   sources?: string[];

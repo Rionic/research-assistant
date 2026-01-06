@@ -20,7 +20,6 @@ export default function Dashboard() {
     }
   }, [user, loading, router]);
 
-  // Real-time listener for research sessions
   useEffect(() => {
     if (!user) return;
 
