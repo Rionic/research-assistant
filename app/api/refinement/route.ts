@@ -45,13 +45,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       });
 
-      // Use Vercel's waitUntil to keep function alive for background work
-      if (typeof (globalThis as any).waitUntil === 'function') {
-        (globalThis as any).waitUntil(performResearch(sessionId, refinedPrompt));
-      } else {
-        // Fallback: call webhook to trigger research externally
-        triggerResearchWebhook(sessionId, refinedPrompt);
-      }
+      performResearch(sessionId, refinedPrompt);
 
       return NextResponse.json({
         sessionId,
@@ -72,4 +66,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to submit refinement' }, { status: 500 });
   }
 }
-
