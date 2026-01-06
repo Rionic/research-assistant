@@ -191,7 +191,6 @@ research-assistant/
 │   └── test-flow.ts               # Backend integration test suite
 ├── types/
 │   └── index.ts                   # TypeScript type definitions
-├── public/                        # Static assets
 ├── .env.example                   # Environment variables template
 └── railway.json                   # Railway deployment configuration
 ```
