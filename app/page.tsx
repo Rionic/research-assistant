@@ -25,10 +25,9 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-          {/* Logo/Icon */}
+        <div className="bg-white rounded-lg shadow-xl p-8 space-y-6">
           <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mb-4">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center mb-4">
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
@@ -51,7 +50,6 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Description */}
           <div className="space-y-3 text-sm text-gray-600">
             <p>Welcome to your AI-powered research assistant.</p>
             <ul className="space-y-2">
@@ -76,10 +74,9 @@ export default function Home() {
             </ul>
           </div>
 
-          {/* Sign In Button */}
           <button
             onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
+            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 rounded-lg px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-colors shadow-sm"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -102,7 +99,6 @@ export default function Home() {
             Continue with Google
           </button>
 
-          {/* Footer */}
           <p className="text-xs text-center text-gray-500 mt-4">
             Sign in with your Google account to get started
           </p>
