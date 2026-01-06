@@ -4,7 +4,6 @@ import { getAuth, Auth } from 'firebase-admin/auth';
 
 let adminApp: App | undefined;
 
-// Lazy initialization function - only initializes when first called
 function getAdminApp(): App {
   if (adminApp) {
     return adminApp;
@@ -15,27 +14,19 @@ function getAdminApp(): App {
     return adminApp;
   }
 
-  console.log('[FIREBASE-ADMIN] Initializing Firebase Admin SDK');
-
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-  try {
-    adminApp = initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey,
-      }),
-    });
-    console.log('[FIREBASE-ADMIN] Firebase Admin initialized successfully');
-    return adminApp;
-  } catch (error) {
-    console.error('[FIREBASE-ADMIN] Error initializing Firebase Admin:', error);
-    throw error;
-  }
+  adminApp = initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey,
+    }),
+  });
+
+  return adminApp;
 }
 
-// Export admin services with lazy initialization
 export const adminDb = new Proxy({} as Firestore, {
   get(target, prop) {
     const db = getFirestore(getAdminApp());

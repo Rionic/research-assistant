@@ -219,78 +219,40 @@ This tests all API integrations and components (OpenAI, Gemini, PDF generation, 
 
 ## 🚀 Deployment
 
-### Deploy to Vercel (Recommended)
+### Deploy to Railway (Recommended)
 
-1. **Push to GitHub**
-   ```bash
-   git push origin main
-   ```
+Railway provides persistent server instances with no timeout limits, perfect for long-running research tasks.
 
-2. **Import to Vercel**
-   - Go to [Vercel](https://vercel.com)
-   - Click "Import Project"
-   - Select your GitHub repository
+**Quick Deploy:**
 
-3. **Add Environment Variables**
-   - In Vercel project settings, add all variables from `.env.local`
-   - Ensure Firebase Admin private key is properly escaped
-
-4. **Configure Function Settings** ⚠️ **CRITICAL**
-   - In Vercel project settings → Functions
-   - Set **Max Duration** to **300 seconds** (requires Pro plan)
-   - Or use **60 seconds** on Hobby plan (research may timeout for complex queries)
-   - Alternative: Deploy backend to Railway/Render for unlimited execution time
-
-5. **Set Production URL**
-   - Add `NEXT_PUBLIC_APP_URL=https://your-app.vercel.app` to environment variables
-   - This enables webhook fallback for research processing
-
-6. **Deploy**
-   - Vercel will auto-deploy on every push to main
-   - Production URL will be provided
-
-### ⚠️ Vercel Deployment Notes
-
-**Serverless Function Timeout Issue:**
-- Research execution takes 30-90 seconds (OpenAI + Gemini + PDF + Email)
-- Vercel Hobby plan: **10 second timeout** (will fail)
-- Vercel Pro plan: **60 second timeout** (may work for simple queries)
-- Solution 1: Upgrade to Vercel Pro and set `maxDuration: 300` ✅
-- Solution 2: Deploy backend to Railway/Render (no timeout limits) ✅
-
-**How It Works:**
-1. API routes use `waitUntil()` API (Vercel Pro/Edge Runtime)
-2. Fallback: Webhook pattern triggers `/api/process-research` endpoint
-3. Research runs in separate request with extended timeout
-
-### Alternative: Deploy to Railway/Render
-
-For unlimited execution time without Pro plan:
-
-**Railway:**
 ```bash
 # Install Railway CLI
 npm install -g @railway/cli
-# Deploy
+
+# Login and deploy
 railway login
 railway init
 railway up
 ```
 
-**Render:**
+**Detailed Setup:**
+
+See [RAILWAY_DEPLOY.md](./RAILWAY_DEPLOY.md) for complete step-by-step instructions.
+
+**After Deployment:**
+
+1. Get your Railway URL: `railway domain`
+2. Add to environment variables: `NEXT_PUBLIC_APP_URL=https://your-app.railway.app`
+3. Add authorized domain in Firebase Console → Authentication → Settings → Authorized domains
+
+### Alternative: Deploy to Render
+
 1. Go to [Render](https://render.com)
 2. Create new Web Service
 3. Connect GitHub repo
-4. Set build command: `npm install && npm run build`
-5. Set start command: `npm start`
+4. Build command: `npm install && npm run build`
+5. Start command: `npm start`
 6. Add all environment variables
-
-### Environment Variables for Production
-```env
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-# OR
-NEXT_PUBLIC_APP_URL=https://your-app.railway.app
-```
 
 ## 📊 Firestore Schema
 
