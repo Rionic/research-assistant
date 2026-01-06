@@ -2,6 +2,12 @@
 
 A full-stack web application that performs deep research using both OpenAI's Deep Research API and Google's Gemini API, delivering comprehensive PDF reports via email.
 
+## 🌐 Live Demo
+
+**Deployed Application**: [https://research-assistant-production-4235.up.railway.app](https://research-assistant-production-4235.up.railway.app)
+
+Try it out with Google OAuth authentication!
+
 ## 🎯 Overview
 
 This application allows authenticated users to:
@@ -42,7 +48,7 @@ This application allows authenticated users to:
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Rionic/research-assistant.git
    cd research-assistant
    ```
 
@@ -151,7 +157,7 @@ This application allows authenticated users to:
 4. **Wait for Results**
    - Both OpenAI and Gemini will research in parallel
    - Watch real-time status updates on your dashboard
-   - Typical research takes 30-90 seconds
+   - Typical research takes 20-60 seconds
 
 5. **Receive Email**
    - Check your Gmail for the PDF report
@@ -164,24 +170,30 @@ This application allows authenticated users to:
 research-assistant/
 ├── app/
 │   ├── api/
-│   │   ├── research/route.ts      # Initial research submission & refinement
-│   │   └── refinement/route.ts    # Refinement answers & parallel execution
+│   │   ├── research/route.ts      # Start research & get refinement questions
+│   │   ├── refinement/route.ts    # Submit answers & trigger parallel execution
+│   │   └── results/route.ts       # Fetch research results by session ID
 │   ├── dashboard/
 │   │   └── page.tsx               # Main dashboard with research history
-│   ├── layout.tsx                 # Root layout
-│   └── page.tsx                   # Login page
+│   ├── layout.tsx                 # Root layout with AuthProvider
+│   └── page.tsx                   # Login page with Google OAuth
 ├── components/
-│   └── NewResearchModal.tsx       # Multi-step research modal
+│   └── NewResearchModal.tsx       # Multi-step research creation modal
 ├── contexts/
-│   └── AuthContext.tsx            # Firebase auth state management
+│   └── AuthContext.tsx            # Firebase authentication state
 ├── lib/
-│   ├── firebase.ts                # Firebase client SDK
-│   ├── firebase-admin.ts          # Firebase Admin SDK
+│   ├── firebase.ts                # Firebase client SDK configuration
+│   ├── firebase-admin.ts          # Firebase Admin SDK (server-side)
+│   ├── research.ts                # Shared research logic (OpenAI, Gemini, orchestration)
 │   ├── email-sender.ts            # SendGrid email delivery
-│   └── pdf-generator.ts           # jsPDF report generation
+│   └── pdf-generator.ts           # jsPDF report generation with markdown
+├── scripts/
+│   └── test-flow.ts               # Backend integration test suite
 ├── types/
 │   └── index.ts                   # TypeScript type definitions
-└── .env.example                   # Environment variable template
+├── public/                        # Static assets
+├── .env.example                   # Environment variables template
+└── railway.json                   # Railway deployment configuration
 ```
 
 ## 🔒 Security Notes
@@ -216,43 +228,6 @@ npm run test:flow
 ```
 
 This tests all API integrations and components (OpenAI, Gemini, PDF generation, email sending).
-
-## 🚀 Deployment
-
-### Deploy to Railway (Recommended)
-
-Railway provides persistent server instances with no timeout limits, perfect for long-running research tasks.
-
-**Quick Deploy:**
-
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Login and deploy
-railway login
-railway init
-railway up
-```
-
-**Detailed Setup:**
-
-See [RAILWAY_DEPLOY.md](./RAILWAY_DEPLOY.md) for complete step-by-step instructions.
-
-**After Deployment:**
-
-1. Get your Railway URL: `railway domain`
-2. Add to environment variables: `NEXT_PUBLIC_APP_URL=https://your-app.railway.app`
-3. Add authorized domain in Firebase Console → Authentication → Settings → Authorized domains
-
-### Alternative: Deploy to Render
-
-1. Go to [Render](https://render.com)
-2. Create new Web Service
-3. Connect GitHub repo
-4. Build command: `npm install && npm run build`
-5. Start command: `npm start`
-6. Add all environment variables
 
 ## 📊 Firestore Schema
 
