@@ -21,8 +21,11 @@ export async function performResearch(sessionId: string, refinedPrompt: string) 
   try {
     console.log('Starting research for session:', sessionId);
 
-    const openaiResult = await performOpenAIResearch(refinedPrompt);
-    const geminiResult = await performGeminiResearch(refinedPrompt);
+    // Run both in parallel
+    const [openaiResult, geminiResult] = await Promise.all([
+      performOpenAIResearch(refinedPrompt),
+      performGeminiResearch(refinedPrompt),
+    ]);
 
     await sessionRef.update({
       openaiResult,
@@ -34,6 +37,10 @@ export async function performResearch(sessionId: string, refinedPrompt: string) 
 
     const sessionDoc = await sessionRef.get();
     const session = sessionDoc.data() as ResearchSession;
+
+    console.log('OpenAI research result length:', openaiResult.length);
+    console.log('Gemini deep research result length:', geminiResult.length);
+    console.log('Generating PDF and sending email with both results...');
 
     await generateAndEmailReport(session);
 
@@ -80,12 +87,70 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
 }
 
 async function performGeminiResearch(prompt: string): Promise<string> {
-  const response = await getGeminiAI().models.generateContent({
-    model: 'gemini-flash-latest',
-    contents: prompt,
-  });
+  try {
+    const gemini = getGeminiAI();
 
-  return response.text || '';
+    console.log('Starting Gemini deep research agent...');
+
+    const interaction = await gemini.interactions.create({
+      input: prompt,
+      agent: 'deep-research-pro-preview-12-2025',
+      background: true,
+    });
+
+    console.log('Gemini deep research interaction created:', interaction.id);
+    console.log('Waiting for deep research to complete...');
+
+    // Poll the interaction until it's complete
+    let completedInteraction = interaction;
+    let pollCount = 0;
+    const maxPolls = 120; // 10 minutes maximum (5 second intervals)
+
+    while (pollCount < maxPolls) {
+      // Get the current state of the interaction
+      completedInteraction = await gemini.interactions.get(interaction.id);
+
+      console.log(`Polling attempt ${pollCount + 1}, status: ${completedInteraction.status || 'unknown'}`);
+
+      // Check if it failed or was cancelled
+      if (completedInteraction.status === 'failed' || completedInteraction.status === 'cancelled') {
+        console.error('Deep research failed or was cancelled');
+        break;
+      }
+
+      // Check if still in progress
+      if (completedInteraction.status === 'in_progress' || completedInteraction.status === 'requires_action') {
+        // Continue polling
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        pollCount++;
+        continue;
+      }
+
+      // If status is not in_progress/requires_action/failed/cancelled, assume it's done
+      console.log('Deep research completed!');
+      break;
+    }
+
+    if (pollCount >= maxPolls) {
+      console.warn('Deep research timed out after polling');
+    }
+
+    // Extract the final result from outputs
+    let result = '';
+    if (completedInteraction.outputs && completedInteraction.outputs.length > 0) {
+      const lastOutput = completedInteraction.outputs[completedInteraction.outputs.length - 1];
+      // Check if it's a text content type
+      if ('text' in lastOutput) {
+        result = lastOutput.text || '';
+      }
+    }
+
+    console.log('Gemini deep research completed, result length:', result.length);
+    return result || 'No response from Gemini deep research agent';
+  } catch (error) {
+    console.error('Error with Gemini deep research agent:', error);
+    throw error;
+  }
 }
 
 async function generateAndEmailReport(session: ResearchSession) {

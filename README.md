@@ -23,14 +23,15 @@ This application allows authenticated users to:
 - **Backend**: Next.js API Routes (serverless)
 - **Database**: Firebase Firestore
 - **Authentication**: Firebase Auth (Google OAuth)
-- **APIs**: OpenAI (gpt-4o), Google Gemini (gemini-flash-latest)
+- **APIs**: OpenAI (gpt-4o), Google Gemini (gemini-2.0-flash-exp with deep research)
 - **Email**: SendGrid
 - **PDF Generation**: jsPDF + marked (markdown parsing)
 
 ### Key Features
 - **OAuth Authentication**: Secure Gmail sign-in with Firebase Auth
 - **Interactive Refinement**: OpenAI analyzes prompts and asks clarifying questions
-- **Parallel Research**: Executes OpenAI and Gemini research simultaneously
+- **Deep Research**: Gemini 2.0 deep research agent for comprehensive multi-angle analysis
+- **Parallel Execution**: Runs OpenAI and Gemini simultaneously for faster results
 - **Real-time Updates**: Firestore listeners for instant status updates
 - **Professional Reports**: Well-formatted PDFs with tables, lists, and proper typography
 - **Email Delivery**: Automatic email with PDF attachment and summary
@@ -191,6 +192,7 @@ research-assistant/
 │   └── test-flow.ts               # Backend integration test suite
 ├── types/
 │   └── index.ts                   # TypeScript type definitions
+├── public/                        # Static assets
 ├── .env.example                   # Environment variables template
 └── railway.json                   # Railway deployment configuration
 ```
@@ -201,6 +203,23 @@ research-assistant/
 - Firebase Admin private key must be kept secret
 - All API keys should be rotated regularly
 - Client-side Firebase config is safe to expose (uses Firebase Security Rules)
+
+## 🎨 Design Decisions
+
+### Why This Architecture?
+- **Client-Server Separation**: Frontend handles UI/UX, backend handles API orchestration
+- **Real-time Updates**: Firestore listeners provide instant feedback without polling
+- **Parallel Execution**: Promise.all executes both APIs simultaneously for speed
+- **Markdown Parsing**: Using `marked` library for robust PDF formatting (tables, lists, etc.)
+
+### API Orchestration Flow
+```
+User Input → OpenAI Refinement → Firestore Save → Parallel Deep Research
+                                                   ├─ OpenAI (gpt-4o)
+                                                   └─ Gemini (2.0 deep research)
+                                                         ↓
+                                                   PDF Generation → Email → Update Firestore
+```
 
 ## 🧪 Testing
 
