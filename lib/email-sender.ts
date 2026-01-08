@@ -61,7 +61,11 @@ function generateEmailSummary(session: ResearchSession): string {
       : new Date(session.completedAt)
     : new Date(session.updatedAt);
 
-  summary += `Research completed on: ${completedDate.toLocaleString()}\n\n`;
+  const dateString = session.userTimezone
+    ? completedDate.toLocaleString('en-US', { timeZone: session.userTimezone })
+    : completedDate.toLocaleString('en-US');
+
+  summary += `Research completed on: ${dateString}\n\n`;
 
   summary += `Key Insights:\n`;
   summary += `- Research conducted using OpenAI's Deep Research API\n`;
@@ -79,6 +83,10 @@ function generateEmailHTML(session: ResearchSession, textSummary: string): strin
       ? new Date((session.completedAt as any)._seconds * 1000)
       : new Date(session.completedAt)
     : new Date(session.updatedAt);
+
+  const dateString = session.userTimezone
+    ? completedDate.toLocaleString('en-US', { timeZone: session.userTimezone })
+    : completedDate.toLocaleString('en-US');
 
   return `
 <!DOCTYPE html>
@@ -184,7 +192,7 @@ function generateEmailHTML(session: ResearchSession, textSummary: string): strin
 
     <div style="margin-top: 20px;">
       <span class="badge">✓ Completed</span>
-      <p><strong>Completed:</strong> ${completedDate.toLocaleString()}</p>
+      <p><strong>Completed:</strong> ${dateString}</p>
     </div>
 
     <div style="background: white; padding: 15px; border-radius: 4px; margin-top: 15px;">

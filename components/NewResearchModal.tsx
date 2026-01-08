@@ -30,6 +30,8 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
     setIsLoading(true);
 
     try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
       const response = await fetch('/api/research', {
         method: 'POST',
         headers: {
@@ -37,7 +39,7 @@ export default function NewResearchModal({ isOpen, onClose }: NewResearchModalPr
           'x-user-id': user.uid,
           'x-user-email': user.email || '',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, timezone }),
       });
 
       if (!response.ok) {

@@ -21,7 +21,6 @@ export async function performResearch(sessionId: string, refinedPrompt: string) 
   try {
     console.log('Starting research for session:', sessionId);
 
-    // Run both in parallel
     const [openaiResult, geminiResult] = await Promise.all([
       performOpenAIResearch(refinedPrompt),
       performGeminiResearch(refinedPrompt),
@@ -101,32 +100,26 @@ async function performGeminiResearch(prompt: string): Promise<string> {
     console.log('Gemini deep research interaction created:', interaction.id);
     console.log('Waiting for deep research to complete...');
 
-    // Poll the interaction until it's complete
     let completedInteraction = interaction;
     let pollCount = 0;
-    const maxPolls = 120; // 10 minutes maximum (5 second intervals)
+    const maxPolls = 120;
 
     while (pollCount < maxPolls) {
-      // Get the current state of the interaction
       completedInteraction = await gemini.interactions.get(interaction.id);
 
       console.log(`Polling attempt ${pollCount + 1}, status: ${completedInteraction.status || 'unknown'}`);
 
-      // Check if it failed or was cancelled
       if (completedInteraction.status === 'failed' || completedInteraction.status === 'cancelled') {
         console.error('Deep research failed or was cancelled');
         break;
       }
 
-      // Check if still in progress
       if (completedInteraction.status === 'in_progress' || completedInteraction.status === 'requires_action') {
-        // Continue polling
         await new Promise(resolve => setTimeout(resolve, 5000));
         pollCount++;
         continue;
       }
 
-      // If status is not in_progress/requires_action/failed/cancelled, assume it's done
       console.log('Deep research completed!');
       break;
     }
@@ -135,11 +128,9 @@ async function performGeminiResearch(prompt: string): Promise<string> {
       console.warn('Deep research timed out after polling');
     }
 
-    // Extract the final result from outputs
     let result = '';
     if (completedInteraction.outputs && completedInteraction.outputs.length > 0) {
       const lastOutput = completedInteraction.outputs[completedInteraction.outputs.length - 1];
-      // Check if it's a text content type
       if ('text' in lastOutput) {
         result = lastOutput.text || '';
       }

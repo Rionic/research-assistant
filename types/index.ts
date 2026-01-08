@@ -24,28 +24,24 @@ export interface ResearchSession {
   id: string;
   userId: string;
   userEmail: string;
-
+  userTimezone?: string;
   initialPrompt: string;
   refinedPrompt?: string;
-
   refinementQuestions: RefinementQuestion[];
-
   openaiResult?: string;
   geminiResult?: string;
-
   status: ResearchStatus;
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
-
   pdfUrl?: string;
   emailSentAt?: Date;
-
   error?: string;
 }
 
 export interface StartResearchRequest {
   prompt: string;
+  timezone?: string;
 }
 
 export interface StartResearchResponse {

@@ -6,7 +6,7 @@ import { getOpenAI, performResearch } from '@/lib/research';
 export async function POST(request: NextRequest) {
   try {
     const body: StartResearchRequest = await request.json();
-    const { prompt } = body;
+    const { prompt, timezone } = body;
 
     const userId = request.headers.get('x-user-id');
     const userEmail = request.headers.get('x-user-email');
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
         id: sessionId,
         userId,
         userEmail,
+        userTimezone: timezone,
         initialPrompt: prompt,
         refinedPrompt: prompt,
         refinementQuestions: [],
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
       id: sessionId,
       userId,
       userEmail,
+      userTimezone: timezone,
       initialPrompt: prompt,
       refinementQuestions,
       status: 'refining',

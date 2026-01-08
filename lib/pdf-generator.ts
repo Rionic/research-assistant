@@ -173,7 +173,7 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
       }
     }
 
-    yPosition += 5; 
+    yPosition += 5;
   };
 
   const cleanMarkdown = (text: string): string => {
@@ -185,7 +185,6 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
       .replace(/`/g, '')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
   };
-
   doc.setFillColor(41, 128, 185);
   doc.rect(0, 0, pageWidth, 40, 'F');
   doc.setTextColor(255, 255, 255);
@@ -207,7 +206,11 @@ export async function generateResearchPDF(session: ResearchSession): Promise<Buf
     ? new Date((session.createdAt as any)._seconds * 1000)
     : new Date(session.createdAt);
 
-  addText(`Date: ${createdDate.toLocaleString()}`, 10);
+  const dateString = session.userTimezone
+    ? createdDate.toLocaleString('en-US', { timeZone: session.userTimezone })
+    : createdDate.toLocaleString('en-US');
+
+  addText(`Date: ${dateString}`, 10);
   addText(`Status: ${session.status.toUpperCase()}`, 10);
 
   yPosition += 10;
