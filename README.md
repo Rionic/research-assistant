@@ -10,7 +10,7 @@ Try it out with Google OAuth authentication!
 
 ## 🎥 Demo Video
 
-<video src="https://github.com/Rionic/research-assistant/raw/main/Research%20Assistant%20Demo.mp4" controls width="100%"></video>
+[![Watch Demo](https://img.youtube.com/vi/FUheh4Q1hdk/maxresdefault.jpg)](https://www.youtube.com/watch?v=FUheh4Q1hdk)
 
 *Watch the full workflow: authentication, research submission, refinement questions, and email delivery with PDF reports.*
 
