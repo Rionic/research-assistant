@@ -8,6 +8,12 @@ A full-stack web application that performs deep research using both OpenAI's Dee
 
 Try it out with Google OAuth authentication!
 
+## 🎥 Demo Video
+
+<video src="https://github.com/Rionic/research-assistant/raw/main/Research%20Assistant%20Demo.mp4" controls width="100%"></video>
+
+*Watch the full workflow: authentication, research submission, refinement questions, and email delivery with PDF reports.*
+
 ## 🎯 Overview
 
 This application allows authenticated users to:
