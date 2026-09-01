@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { ResearchSession, StartResearchRequest } from '@/types';
 import { getOpenAI, performResearch } from '@/lib/research';
+import { createChatCompletion } from '@/lib/groq';
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,8 +92,7 @@ export async function POST(request: NextRequest) {
 // Original: model: 'gpt-4o' via OpenAI
 async function getRefinementQuestions(prompt: string) {
   try {
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+    const completion = await createChatCompletion(getOpenAI(), ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'], {
       messages: [
         {
           role: 'system',

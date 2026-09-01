@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { ResearchSession } from '@/types';
 import { embedResearchResults } from '@/lib/rag';
 import { gatherContext } from '@/lib/agent/planner';
+import { createChatCompletion } from '@/lib/groq';
 
 // Original OpenAI client (GPT-4o), kept for reference
 // export function getOpenAI() {
@@ -123,8 +124,12 @@ async function performOpenAIResearch(prompt: string): Promise<string> {
 
   console.log('Starting Groq research agent...');
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+  // llama-3.3-70b-versatile was removed from Groq's lineup (deprecated while
+  // this app was idle); gpt-oss-120b keeps this generator distinct in size
+  // from performGeminiResearch's gpt-oss-20b rather than collapsing both to
+  // the same model. createChatCompletion falls back to gpt-oss-20b if 120b
+  // is ever deprecated too (lib/groq.ts).
+  const completion = await createChatCompletion(getOpenAI(), ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], {
     messages: [
       {
         role: 'system',
@@ -189,8 +194,7 @@ async function performGeminiResearch(prompt: string): Promise<string> {
     // llama-3.1-8b-instant deprecated by Groq (decommissioned 2026-08-16); switched to recommended replacement
     console.log('Starting Groq gpt-oss-20b research agent...');
 
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'openai/gpt-oss-20b',
+    const completion = await createChatCompletion(getOpenAI(), ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'], {
       messages: [
         {
           role: 'system',

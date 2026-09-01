@@ -15,8 +15,14 @@ import { webSearch, WebSearchResult } from '@/lib/tools/webSearch';
 import { augmentPromptWithPastResearch, augmentPromptWithWebSources } from '@/lib/prompts';
 import { SearchResult } from '@/lib/rag/qdrant';
 import { PlannerTraceStep, WebSource } from '@/types';
+import { createChatCompletion } from '@/lib/groq';
 
-const PLANNER_MODEL = 'llama-3.3-70b-versatile';
+// llama-3.3-70b-versatile was removed from Groq's model lineup; gpt-oss-20b
+// is confirmed to support OpenAI-compatible tool calling and is already a
+// proven dependency elsewhere in the pipeline (lib/research.ts). gpt-oss-120b
+// is the fallback if 20b is ever deprecated too (both confirmed tool-calling
+// capable; see lib/groq.ts).
+const PLANNER_MODELS: [string, ...string[]] = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
 const MAX_ITERATIONS = 6;
 // v1: gathering tools only; the planner never sees rag_embed/generate_pdf/send_email
 const ALLOWED_TOOLS = new Set(['rag_retrieve', 'web_search']);
@@ -121,12 +127,11 @@ async function runPlannerLoop(prompt: string, userId: string): Promise<GatheredC
   const openai = getPlannerClient();
 
   console.log(
-    `[planner] starting loop (model: ${PLANNER_MODEL}, tools: ${openAiTools.map((t) => t.function.name).join(', ')}, max ${MAX_ITERATIONS} turns)`
+    `[planner] starting loop (model: ${PLANNER_MODELS[0]}, tools: ${openAiTools.map((t) => t.function.name).join(', ')}, max ${MAX_ITERATIONS} turns)`
   );
 
   for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
-    const completion = await openai.chat.completions.create({
-      model: PLANNER_MODEL,
+    const completion = await createChatCompletion(openai, PLANNER_MODELS, {
       messages,
       tools: openAiTools,
       tool_choice: 'auto',

@@ -5,6 +5,7 @@
 import OpenAI from 'openai';
 import type { EvalQuery } from './eval-queries';
 import type { GatheredContext } from '@/lib/agent/planner';
+import { createChatCompletion } from '@/lib/groq';
 
 // --- 1. Tool selection (heuristic) ---------------------------------------
 
@@ -83,7 +84,9 @@ export interface GroundednessScore {
   reason: string;
 }
 
-const JUDGE_MODEL = 'llama-3.3-70b-versatile'; // same model the planner itself uses, no new dependency
+// same models the planner itself uses, no new dependency (lib/groq.ts falls
+// back if the primary is ever deprecated)
+const JUDGE_MODELS: [string, ...string[]] = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
 
 const JUDGE_SYSTEM_PROMPT = `You are a strict evaluator for a research assistant's context-gathering step.
 You will see a research query and the context that was gathered to help answer it
@@ -121,8 +124,7 @@ export async function scoreGroundedness(query: EvalQuery, result: GatheredContex
 
   try {
     const client = getJudgeClient();
-    const completion = await client.chat.completions.create({
-      model: JUDGE_MODEL,
+    const completion = await createChatCompletion(client, JUDGE_MODELS, {
       messages: [
         { role: 'system', content: JUDGE_SYSTEM_PROMPT },
         {
